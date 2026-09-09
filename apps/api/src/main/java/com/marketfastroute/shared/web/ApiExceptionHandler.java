@@ -1,10 +1,12 @@
 package com.marketfastroute.shared.web;
 
+import com.marketfastroute.product.ProductNotFoundException;
 import com.marketfastroute.store.StoreNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -21,6 +23,26 @@ public class ApiExceptionHandler {
 				.body(new ApiErrorResponse(
 						"STORE_NOT_FOUND",
 						"Store not found",
+						Map.of()
+				));
+	}
+
+	@ExceptionHandler(ProductNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleProductNotFound(ProductNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ApiErrorResponse(
+						"PRODUCT_NOT_FOUND",
+						"Product not found in store",
+						Map.of()
+				));
+	}
+
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidParameter(MethodArgumentTypeMismatchException exception) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ApiErrorResponse(
+						"INVALID_PARAMETER",
+						"Invalid request parameter",
 						Map.of()
 				));
 	}
