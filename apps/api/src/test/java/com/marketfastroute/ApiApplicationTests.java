@@ -1,5 +1,6 @@
 package com.marketfastroute;
 
+import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,9 @@ class ApiApplicationTests {
 	@Autowired
 	JdbcTemplate jdbcTemplate;
 
+	@Autowired
+	EntityManagerFactory entityManagerFactory;
+
 	private int nextMapVersion;
 
 	@BeforeEach
@@ -56,6 +60,7 @@ class ApiApplicationTests {
 	@Test
 	void contextLoads() {
 		assertTrue(postgres.isRunning());
+		assertEquals(12, entityManagerFactory.getMetamodel().getEntities().size());
 		assertEquals(4, jdbcTemplate.queryForObject(
 				"SELECT COUNT(*) FROM flyway_schema_history WHERE success = TRUE", Integer.class));
 		assertEquals(12, jdbcTemplate.queryForObject("""
