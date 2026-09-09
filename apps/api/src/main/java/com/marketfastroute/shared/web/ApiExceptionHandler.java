@@ -1,6 +1,8 @@
 package com.marketfastroute.shared.web;
 
 import com.marketfastroute.product.ProductNotFoundException;
+import com.marketfastroute.product.ProductLocationConsistencyException;
+import com.marketfastroute.product.ProductLocationNotFoundException;
 import com.marketfastroute.store.StoreNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,30 @@ public class ApiExceptionHandler {
 				.body(new ApiErrorResponse(
 						"PRODUCT_NOT_FOUND",
 						"Product not found in store",
+						Map.of()
+				));
+	}
+
+	@ExceptionHandler(ProductLocationNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleProductLocationNotFound(ProductLocationNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ApiErrorResponse(
+						"PRODUCT_LOCATION_NOT_FOUND",
+						"Product location not found",
+						Map.of()
+				));
+	}
+
+	@ExceptionHandler(ProductLocationConsistencyException.class)
+	public ResponseEntity<ApiErrorResponse> handleProductLocationConsistency(
+			ProductLocationConsistencyException exception
+	) {
+		log.error("Product location data is inconsistent", exception);
+
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(new ApiErrorResponse(
+						"PRODUCT_LOCATION_INCONSISTENT",
+						"Product location data is inconsistent",
 						Map.of()
 				));
 	}
