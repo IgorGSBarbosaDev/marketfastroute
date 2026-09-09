@@ -1,5 +1,7 @@
 package com.marketfastroute.shared.web;
 
+import com.marketfastroute.map.MapConsistencyException;
+import com.marketfastroute.map.StoreMapNotFoundException;
 import com.marketfastroute.product.ProductNotFoundException;
 import com.marketfastroute.product.ProductLocationConsistencyException;
 import com.marketfastroute.product.ProductLocationNotFoundException;
@@ -25,6 +27,16 @@ public class ApiExceptionHandler {
 				.body(new ApiErrorResponse(
 						"STORE_NOT_FOUND",
 						"Store not found",
+						Map.of()
+				));
+	}
+
+	@ExceptionHandler(StoreMapNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleStoreMapNotFound(StoreMapNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ApiErrorResponse(
+						"STORE_MAP_NOT_FOUND",
+						"Active map not found for store",
 						Map.of()
 				));
 	}
@@ -59,6 +71,18 @@ public class ApiExceptionHandler {
 				.body(new ApiErrorResponse(
 						"PRODUCT_LOCATION_INCONSISTENT",
 						"Product location data is inconsistent",
+						Map.of()
+				));
+	}
+
+	@ExceptionHandler(MapConsistencyException.class)
+	public ResponseEntity<ApiErrorResponse> handleMapConsistency(MapConsistencyException exception) {
+		log.error("Map data is inconsistent", exception);
+
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(new ApiErrorResponse(
+						"MAP_INCONSISTENT",
+						"Map data is inconsistent",
 						Map.of()
 				));
 	}
