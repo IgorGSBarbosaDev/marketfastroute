@@ -1,0 +1,22 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Node / pnpm
+node_modules/
+.pnpm-store/
+dist/
+coverage/
+
+# Java / Maven
+target/
+*.class
+
+# IDEs and local tooling
+.idea/workspace.xml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
