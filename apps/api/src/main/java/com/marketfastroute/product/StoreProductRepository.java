@@ -10,6 +10,14 @@ import java.util.UUID;
 
 public interface StoreProductRepository extends JpaRepository<StoreProduct, UUID> {
 
+    List<StoreProduct> findByStore_IdOrderById(UUID storeId);
+
+    Optional<StoreProduct> findByStore_IdAndId(UUID storeId, UUID storeProductId);
+
+    Optional<StoreProduct> findByStore_IdAndProduct_Id(UUID storeId, UUID productId);
+
+    boolean existsByStore_IdAndProduct_Id(UUID storeId, UUID productId);
+
     @Query("""
             select storeProduct
             from StoreProduct storeProduct
