@@ -1,0 +1,14 @@
+{
+  "name": "marketfastroute",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "web:dev": "pnpm --filter @marketfastroute/web dev",
+    "web:build": "pnpm --filter @marketfastroute/web build",
+    "web:test": "pnpm --filter @marketfastroute/web test",
+    "web:lint": "pnpm --filter @marketfastroute/web lint",
+    "compose:config": "docker compose -f infra/compose.yaml config",
+    "compose:up": "docker compose -f infra/compose.yaml up --build",
+    "compose:down": "docker compose -f infra/compose.yaml down"
+  }
+}
