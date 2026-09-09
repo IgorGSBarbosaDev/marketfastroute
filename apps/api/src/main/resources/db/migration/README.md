@@ -1,4 +1,6 @@
-This directory is intentionally empty until the first business migration is defined.
+This directory contains the versioned PostgreSQL schema migrations for the
+MVP. Flyway executes files in version order using the naming convention
+`V<version>__<description>.sql`.
 
-Flyway is configured for this location, but no business schema is invented by
-the development environment setup.
+The data model and the migrations must evolve together. Once a migration has
+been applied to a shared environment, do not edit it; create a new version.

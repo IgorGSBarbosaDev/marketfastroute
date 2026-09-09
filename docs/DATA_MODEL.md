@@ -9,8 +9,10 @@ O PostgreSQL é a fonte persistente oficial. Redis não participa da modelagem
 de integridade e, quando utilizado, deverá servir apenas para cache ou dados
 efêmeros.
 
-Este documento não cria entidades JPA, repositories, services, controllers,
-migrations ou algoritmo de rotas.
+Este documento não cria entidades JPA, repositories, services, controllers ou
+algoritmo de rotas. O esquema físico descrito aqui é implementado pelas
+migrations Flyway versionadas em
+`apps/api/src/main/resources/db/migration`.
 
 As tabelas persistem apenas:
 
@@ -29,22 +31,40 @@ histórico de rotas também não são persistidos nesta etapa.
 ## 2. Convenções relacionais
 
 - Nomes físicos de tabelas e colunas usam `snake_case`.
-- Todas as chaves primárias são `UUID`.
+- Todas as chaves primárias são `UUID` com `DEFAULT gen_random_uuid()`.
 - Datas de criação e atualização usam `TIMESTAMPTZ`.
 - Medidas geométricas usam `NUMERIC`; a unidade das coordenadas é a unidade
   local do mapa, convertida por `scale_meters_per_unit`.
 - Estados e tipos enumerados são armazenados como `VARCHAR` com `CHECK`, em vez
   de tipos nativos do PostgreSQL. Isso mantém os valores explícitos sem
   acoplar a evolução do modelo a alterações de tipos nativos.
-- Campos `active` são `BOOLEAN NOT NULL` e representam ativação lógica. O
-  modelo não adiciona `deleted_at`, pois isso não foi definido no escopo.
-- Valores padrão sugeridos para flags são `TRUE` para novos registros
-  estruturais e `FALSE` para `product_location.primary_location`. O fluxo de
-  criação ainda deverá definir `created_at` e `updated_at`.
+- Campos `active` são `BOOLEAN NOT NULL DEFAULT TRUE` e representam ativação
+  lógica. `product_location.primary_location` é
+  `BOOLEAN NOT NULL DEFAULT FALSE`. O modelo não adiciona `deleted_at`, pois
+  isso não foi definido no escopo.
+- `store_map.status` é `VARCHAR(20) NOT NULL DEFAULT 'DRAFT'`.
+- `created_at` e `updated_at` são `TIMESTAMPTZ NOT NULL DEFAULT
+  CURRENT_TIMESTAMP`. A atualização posterior de `updated_at` é responsabilidade
+  da camada de aplicação; nenhuma trigger foi criada nesta etapa.
+- As precisões `NUMERIC(12,4)` para geometria/distâncias e `NUMERIC(12,6)` para
+  escala são decisões físicas do MVP. Limites de tamanho textual continuam
+  sem restrição artificial (`VARCHAR` sem limite).
 
-As precisões exatas de `NUMERIC`, limites máximos de textos e convenções de
-coordenadas não foram definidos no PRD. As precisões indicadas abaixo são
-recomendações físicas iniciais, não regras de negócio.
+### 2.1 Migrations
+
+As migrations são executadas pelo Flyway na ordem abaixo. Cada arquivo é
+imutável depois de aplicado em um ambiente compartilhado; alterações futuras
+devem usar uma nova versão.
+
+| Versão | Arquivo | Responsabilidade |
+|---:|---|---|
+| `V1` | `V1__create_store_and_catalog.sql` | loja, categoria, produto e disponibilidade por loja |
+| `V2` | `V2__create_store_maps_and_navigation.sql` | versões de mapa, estruturas visuais, POIs e grafo |
+| `V3` | `V3__create_product_locations.sql` | localizações por loja/mapa e localização principal |
+| `V4` | `V4__create_catalog_and_map_indexes.sql` | índices secundários de leitura |
+
+As constraints `UNIQUE` e as chaves primárias criam seus próprios índices;
+eles não são repetidos na `V4`.
 
 ## 3. Diagrama ER
 
@@ -242,7 +262,7 @@ Representa uma unidade física do supermercado.
 | `address` | `VARCHAR` | não | Endereço conforme o escopo |
 | `city` | `VARCHAR` | não | Cidade |
 | `state` | `VARCHAR` | não | Estado; formato específico não definido |
-| `active` | `BOOLEAN` | não | Ativação lógica; default recomendado `TRUE` |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Ativação lógica |
 | `created_at` | `TIMESTAMPTZ` | não | Auditoria de criação |
 | `updated_at` | `TIMESTAMPTZ` | não | Auditoria de atualização |
 
@@ -251,9 +271,9 @@ Cardinalidades:
 - uma `store` possui zero ou muitas `store_map`;
 - uma `store` possui zero ou muitas `store_product`.
 
-`code` é tratado como identificador técnico global da unidade. Se o negócio
-permitir códigos repetidos entre redes ou contextos futuros, essa regra deverá
-ser revista antes da migration.
+`code` é um identificador técnico global da unidade e a migration aplica
+`UNIQUE (code)`. Normalização de maiúsculas/minúsculas e formato do código não
+fazem parte do modelo.
 
 ### 4.2 `store_map`
 
@@ -268,7 +288,7 @@ Representa uma versão do mapa de uma loja.
 | `width` | `NUMERIC(12,4)` | não | `CHECK (width > 0)` |
 | `height` | `NUMERIC(12,4)` | não | `CHECK (height > 0)` |
 | `scale_meters_per_unit` | `NUMERIC(12,6)` | não | `CHECK (scale_meters_per_unit > 0)` |
-| `status` | `VARCHAR(20)` | não | `DRAFT`, `ACTIVE` ou `ARCHIVED` |
+| `status` | `VARCHAR(20) NOT NULL DEFAULT 'DRAFT'` | não | `DRAFT`, `ACTIVE` ou `ARCHIVED` |
 | `created_at` | `TIMESTAMPTZ` | não | Auditoria de criação |
 | `updated_at` | `TIMESTAMPTZ` | não | Auditoria de atualização |
 
@@ -300,9 +320,9 @@ Representa uma área lógica desenhada em um mapa.
 | `name` | `VARCHAR` | não | Nome do setor |
 | `code` | `VARCHAR` | não | Único dentro do mapa |
 | `x`, `y` | `NUMERIC(12,4)` | não | Coordenadas do desenho |
-| `width`, `height` | `NUMERIC(12,4)` | não | `CHECK` recomendado: valores `> 0` |
+| `width`, `height` | `NUMERIC(12,4)` | não | `CHECK` obrigatório: valores `> 0` |
 | `rotation` | `NUMERIC(12,4)` | não | Unidade angular ainda não definida |
-| `active` | `BOOLEAN` | não | Ativação lógica; default recomendado `TRUE` |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Ativação lógica |
 
 Restrições e cardinalidades:
 
@@ -324,9 +344,9 @@ Representa um corredor físico.
 | `code` | `VARCHAR` | não | Único dentro do mapa |
 | `name` | `VARCHAR` | não | Nome do corredor |
 | `x`, `y` | `NUMERIC(12,4)` | não | Coordenadas do desenho |
-| `width`, `height` | `NUMERIC(12,4)` | não | `CHECK` recomendado: valores `> 0` |
+| `width`, `height` | `NUMERIC(12,4)` | não | `CHECK` obrigatório: valores `> 0` |
 | `rotation` | `NUMERIC(12,4)` | não | Unidade angular ainda não definida |
-| `active` | `BOOLEAN` | não | Ativação lógica; default recomendado `TRUE` |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Ativação lógica |
 
 Restrições:
 
@@ -353,9 +373,9 @@ Representa um bloco ou prateleira desenhado no mapa.
 | `code` | `VARCHAR` | não | Único dentro do mapa |
 | `name` | `VARCHAR` | sim | Nome opcional |
 | `x`, `y` | `NUMERIC(12,4)` | não | Coordenadas do desenho |
-| `width`, `height` | `NUMERIC(12,4)` | não | `CHECK` recomendado: valores `> 0` |
+| `width`, `height` | `NUMERIC(12,4)` | não | `CHECK` obrigatório: valores `> 0` |
 | `rotation` | `NUMERIC(12,4)` | não | Unidade angular ainda não definida |
-| `active` | `BOOLEAN` | não | Ativação lógica; default recomendado `TRUE` |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Ativação lógica |
 
 Restrições:
 
@@ -379,7 +399,7 @@ Representa uma categoria hierárquica de produtos.
 | `parent_id` | `UUID` | sim | FK para `category(id)` |
 | `name` | `VARCHAR` | não | Nome da categoria |
 | `code` | `VARCHAR` | não | `UNIQUE` |
-| `active` | `BOOLEAN` | não | Ativação lógica; default recomendado `TRUE` |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Ativação lógica |
 
 Restrições e cardinalidades:
 
@@ -389,7 +409,7 @@ Restrições e cardinalidades:
 - ciclos com mais de dois níveis exigem validação transacional na aplicação,
   pois não são impedidos por um `CHECK` simples;
 - `parent_id` deve ser removido ou alterado antes da exclusão de uma categoria
-  que possua dependentes. A política recomendada é `ON DELETE RESTRICT`.
+  que possua dependentes. A migration aplica `ON DELETE RESTRICT`.
 
 O nível máximo da hierarquia não foi definido.
 
@@ -406,7 +426,7 @@ Representa um produto global do catálogo.
 | `name` | `VARCHAR` | não | Nome do produto |
 | `brand` | `VARCHAR` | sim | Marca opcional |
 | `description` | `TEXT` | sim | Descrição opcional |
-| `active` | `BOOLEAN` | não | Ativação lógica; default recomendado `TRUE` |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Ativação lógica |
 | `created_at` | `TIMESTAMPTZ` | não | Auditoria de criação |
 | `updated_at` | `TIMESTAMPTZ` | não | Auditoria de atualização |
 
@@ -434,7 +454,7 @@ Relaciona um produto global à loja em que ele está disponível.
 | `id` | `UUID` | não | PK |
 | `store_id` | `UUID` | não | FK para `store(id)` |
 | `product_id` | `UUID` | não | FK para `product(id)` |
-| `active` | `BOOLEAN` | não | Disponibilidade lógica; default recomendado `TRUE` |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Disponibilidade lógica |
 
 Restrições e cardinalidades:
 
@@ -465,8 +485,8 @@ e uma ilha promocional.
 | `x` | `NUMERIC(12,4)` | sim | Coordenada opcional |
 | `y` | `NUMERIC(12,4)` | sim | Coordenada opcional |
 | `navigation_node_id` | `UUID` | não | Nó do mesmo mapa |
-| `primary_location` | `BOOLEAN` | não | Default recomendado `FALSE` |
-| `active` | `BOOLEAN` | não | Ativação lógica; default recomendado `TRUE` |
+| `primary_location` | `BOOLEAN NOT NULL DEFAULT FALSE` | não | No máximo uma por produto/mapa |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Ativação lógica |
 
 Restrições:
 
@@ -515,7 +535,7 @@ Representa um ponto relevante da loja.
 | `name` | `VARCHAR` | não | Nome exibido |
 | `x` | `NUMERIC(12,4)` | não | Coordenada do ponto |
 | `y` | `NUMERIC(12,4)` | não | Coordenada do ponto |
-| `active` | `BOOLEAN` | não | Ativação lógica; default recomendado `TRUE` |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Ativação lógica |
 
 Tipos permitidos:
 
@@ -552,9 +572,9 @@ Representa um ponto navegável do grafo associado a um mapa.
 | `x` | `NUMERIC(12,4)` | não | Coordenada |
 | `y` | `NUMERIC(12,4)` | não | Coordenada |
 | `label` | `VARCHAR` | sim | Rótulo opcional |
-| `active` | `BOOLEAN` | não | Ativação lógica; default recomendado `TRUE` |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Ativação lógica |
 
-Tipos sugeridos pelo escopo:
+Tipos permitidos pela migration:
 
 ```text
 PATH
@@ -584,7 +604,7 @@ Representa uma conexão navegável entre dois nós do mesmo mapa.
 | `to_node_id` | `UUID` | não | Nó de destino do mesmo mapa |
 | `distance_meters` | `NUMERIC(12,4)` | não | `CHECK (distance_meters > 0)` |
 | `bidirectional` | `BOOLEAN` | não | Indica conexão nos dois sentidos |
-| `active` | `BOOLEAN` | não | Ativação lógica; default recomendado `TRUE` |
+| `active` | `BOOLEAN NOT NULL DEFAULT TRUE` | não | Ativação lógica |
 
 Restrições:
 
@@ -606,11 +626,11 @@ configuração do mapa e permanecem fora da integridade relacional básica.
 
 ## 5. FKs, nulabilidade e comportamento de exclusão
 
-### 5.1 Política recomendada
+### 5.1 Política aplicada pelas migrations
 
 O MVP não define uma operação de exclusão física para administradores. A
 ativação lógica deve ser preferida para registros que já foram usados. Quando
-uma exclusão física for necessária, a política recomendada é:
+uma exclusão física for necessária, as migrations aplicam:
 
 - `store` → `store_map` e `store_product`: `ON DELETE CASCADE`, pois são dados
   dependentes da unidade física;
@@ -630,8 +650,9 @@ uma exclusão física for necessária, a política recomendada é:
   que ainda dependam dele;
 - demais referências sem regra explícita: `ON DELETE RESTRICT`.
 
-O uso real dessas políticas deverá ser confirmado quando as operações
-administrativas e as migrations forem especificadas.
+As políticas acima são parte do contrato físico do schema. A camada de
+aplicação continua responsável por decidir quando uma exclusão física é
+permitida; o MVP ainda não define essa operação administrativa.
 
 ### 5.2 Nulabilidade
 
@@ -649,10 +670,10 @@ Uma localização possui `navigation_node_id` obrigatório, mesmo quando seus
 campos descritivos de setor/corredor/prateleira não estão preenchidos, porque
 o grafo é a referência necessária para navegação.
 
-## 6. Índices recomendados
+## 6. Índices aplicados
 
-As PKs e constraints `UNIQUE` já criam índices próprios. Além deles, são
-recomendados:
+As PKs e constraints `UNIQUE` já criam índices próprios. Além deles, a `V4`
+cria os índices abaixo para as consultas previstas:
 
 ```sql
 -- Seleção e listagem de lojas ativas.
@@ -696,7 +717,7 @@ CREATE INDEX ix_product_location_map_node
     ON product_location (map_id, navigation_node_id);
 
 -- Pontos e grafo.
-CREATE INDEX ix_poi_map_active_type
+CREATE INDEX ix_point_of_interest_map_active_type
     ON point_of_interest (map_id, active, type);
 
 CREATE INDEX ix_map_node_map_active_type
@@ -839,12 +860,18 @@ Essas regras podem ser necessárias para a operação, mas não estão definidas
 PRD, no SCOPE ou no pedido de modelagem. Devem ser decididas antes de serem
 transformadas em constraints ou validações.
 
-## 10. Pontos `UNRESOLVED`
+## 10. Pontos `UNRESOLVED` fora do contrato relacional
 
-1. **Semântica e unicidade de códigos:** o modelo recomenda `store.code`,
-   `category.code`, `product.sku` e códigos de estruturas únicos nos escopos
-   indicados, mas não existe uma política documentada sobre origem, formato,
-   case sensitivity ou reutilização desses códigos.
+O contrato relacional desta etapa está fechado e implementado nas migrations.
+Os itens abaixo são decisões funcionais ou operacionais que o PRD, o SCOPE e
+o pedido de modelagem não definem; por isso não foram convertidos em novas
+colunas, constraints ou tabelas.
+
+1. **Formato dos códigos:** `store.code`, `category.code`, `product.sku` e os
+   códigos das estruturas têm a unicidade definida no schema, respectivamente
+   global, global, global e por mapa. Origem, normalização, case sensitivity
+   desejada pelo negócio e reutilização após desativação ainda são decisões da
+   camada de aplicação.
 2. **Precisão e origem das coordenadas:** não foi definido se `x`/`y` começam no
    canto superior esquerdo, se podem ser negativos, nem a precisão necessária.
 3. **Unidade de `rotation`:** graus, radianos e convenção de orientação não
@@ -864,8 +891,10 @@ transformadas em constraints ou validações.
 8. **Regra de localização principal entre versões:** a constraint garante uma
    principal por produto e mapa, mas não define se deve existir exatamente uma
    principal apenas no mapa `ACTIVE`.
-9. **Exclusão física versus desativação:** o MVP define campos `active`, mas não
-   define se administradores poderão apagar dados fisicamente.
+9. **Operação de exclusão física:** o schema já define as ações referenciais
+   `CASCADE` e `RESTRICT`, mas o MVP não define se ou quando administradores
+   poderão executar exclusões físicas; a desativação lógica continua sendo o
+   caminho operacional previsto.
 10. **Formato de EAN:** o tipo e a unicidade parcial foram modelados, mas a
     validação do padrão do código não foi especificada.
 

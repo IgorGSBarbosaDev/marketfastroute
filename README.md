@@ -12,8 +12,8 @@ Esta etapa contém somente a fundação do projeto:
 - health check técnico em `/actuator/health`;
 - configuração de correlation ID, CORS e erros padronizados;
 - Docker Compose para subir frontend, backend, PostgreSQL e Redis juntos;
-- Flyway configurado sem migrations de negócio enquanto o schema ainda não foi
-  definido;
+- Flyway configurado com o schema relacional do MVP versionado em
+  `apps/api/src/main/resources/db/migration`;
 - testes automatizados básicos.
 
 Ainda não existem lojas, produtos, mapas, grafos, rotas, autenticação ou endpoints de negócio.
@@ -105,7 +105,6 @@ Os testes de contexto da API usam PostgreSQL via Testcontainers e, portanto, pre
 
 ## Decisões ainda futuras
 
-As migrations de negócio, o contrato da API, autenticação administrativa, uso
-de cache Redis e os algoritmos de pathfinding/ordenação serão definidos junto
-das primeiras funcionalidades. Nenhuma dessas decisões de negócio é
-implementada nesta base.
+O contrato da API, autenticação administrativa, uso de cache Redis e os
+algoritmos de pathfinding/ordenação serão definidos junto das primeiras
+funcionalidades. Essas decisões de negócio não são implementadas nesta base.

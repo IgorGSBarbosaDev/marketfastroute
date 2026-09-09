@@ -5,4 +5,4 @@ management:
 
 spring:
   flyway:
-    enabled: false
+    enabled: true
