@@ -9,7 +9,7 @@ describe('api-client', () => {
   })
 
   it('builds URLs from the configured API base', () => {
-    expect(apiUrl('/actuator/health')).toBe('http://localhost:8080/actuator/health')
+    expect(apiUrl('/actuator/health')).toBe('/api/actuator/health')
   })
 
   it('fetches JSON and sends the default accept header', async () => {
@@ -22,7 +22,7 @@ describe('api-client', () => {
     await expect(getJson<{ status: string }>('/actuator/health')).resolves.toEqual({ status: 'UP' })
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:8080/actuator/health',
+      '/api/actuator/health',
       expect.objectContaining({ headers: expect.any(Headers) }),
     )
     const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit

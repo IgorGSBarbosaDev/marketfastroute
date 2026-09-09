@@ -2,17 +2,21 @@ spring:
   application:
     name: marketfastroute-api
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:marketfastroute}
-    username: ${POSTGRES_USER:marketfastroute}
-    password: ${POSTGRES_PASSWORD:marketfastroute}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:supermarket}}
+    username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:marketfastroute}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:marketfastroute}}
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: none
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    validate-on-migrate: true
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:localhost}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
 
 server:
   port: ${API_PORT:8080}
@@ -25,9 +29,6 @@ management:
   endpoint:
     health:
       show-details: never
-  health:
-    redis:
-      enabled: false
 
 logging:
   structured:

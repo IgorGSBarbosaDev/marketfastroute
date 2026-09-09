@@ -1,4 +1,4 @@
-const defaultApiUrl = 'http://localhost:8080'
+const defaultApiUrl = '/api'
 
 export const apiBaseUrl = (import.meta.env.VITE_API_URL || defaultApiUrl).replace(/\/$/, '')
 

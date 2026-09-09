@@ -2,3 +2,7 @@ management:
   health:
     redis:
       enabled: false
+
+spring:
+  flyway:
+    enabled: false

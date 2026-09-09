@@ -1,0 +1,17 @@
+FROM maven:3.9.16-eclipse-temurin-21
+
+WORKDIR /workspace/apps/api
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY apps/api/pom.xml ./pom.xml
+
+RUN mvn -q -DskipTests dependency:go-offline
+
+COPY apps/api/src ./src
+
+EXPOSE 8080
+
+CMD ["mvn", "spring-boot:run"]

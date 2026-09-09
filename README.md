@@ -11,6 +11,9 @@ Esta etapa contém somente a fundação do projeto:
 - PostgreSQL e Redis para desenvolvimento local;
 - health check técnico em `/actuator/health`;
 - configuração de correlation ID, CORS e erros padronizados;
+- Docker Compose para subir frontend, backend, PostgreSQL e Redis juntos;
+- Flyway configurado sem migrations de negócio enquanto o schema ainda não foi
+  definido;
 - testes automatizados básicos.
 
 Ainda não existem lojas, produtos, mapas, grafos, rotas, autenticação ou endpoints de negócio.
@@ -22,46 +25,69 @@ Ainda não existem lojas, produtos, mapas, grafos, rotas, autenticação ou endp
 - Java 21 para o backend;
 - Docker Desktop com Docker Compose.
 
-## Configuração local
+## Desenvolvimento via Docker Compose
 
-1. Copie `.env.example` para `.env` e ajuste somente os valores necessários.
-2. Instale as dependências do frontend:
+Copie `.env.example` para `.env` se quiser configurar credenciais ou portas.
+Os valores padrão já permitem iniciar o ambiente.
 
-   ```powershell
-   pnpm install
-   ```
+Comando principal:
 
-3. Inicie PostgreSQL e Redis:
+```powershell
+docker compose -f infra/compose.yaml up --build
+```
 
-   ```powershell
-   docker compose -f infra/compose.yaml up -d postgres redis
-   ```
+O Compose inicia os serviços `postgres`, `redis`, `api` e `web`. O frontend
+possui hot reload por volume montado e o backend executa `spring-boot:run` em
+modo de desenvolvimento.
 
-4. Em um terminal, inicie a API:
+Para validar a configuração sem iniciar os serviços:
 
-   ```powershell
-   .\apps\api\mvnw.cmd spring-boot:run
-   ```
+```powershell
+docker compose -f infra/compose.yaml config
+```
 
-5. Em outro terminal, inicie o frontend:
+Para executar em segundo plano:
 
-   ```powershell
-   pnpm web:dev
-   ```
+```powershell
+docker compose -f infra/compose.yaml up --build -d
+```
 
-Frontend: http://localhost:5173
-Health da API: http://localhost:8080/actuator/health
+Para parar os serviços preservando os dados do PostgreSQL:
 
-## Stack completa via Docker
+```powershell
+docker compose -f infra/compose.yaml down
+```
+
+`docker compose down -v` remove também o volume persistente do PostgreSQL.
+
+## URLs locais
+
+- Frontend: http://localhost:5173
+- Health da API: http://localhost:8080/actuator/health
+- PostgreSQL: `localhost:5432`, banco `supermarket`
+- Redis: `localhost:6379`
+
+As chamadas do frontend usam `/api`. O Vite encaminha esse prefixo para
+`http://api:8080` dentro da rede do Compose; o endpoint `/api/actuator/health`
+é encaminhado para o Actuator da API.
+
+## Execução local fora do Compose
+
+```powershell
+pnpm install
+pnpm web:dev
+.\apps\api\mvnw.cmd spring-boot:run
+```
+
+Nesse modo, PostgreSQL e Redis devem estar acessíveis no host e as variáveis
+`POSTGRES_HOST` e `REDIS_HOST` devem apontar para `localhost`. Para o fluxo
+completo e reproduzível, use o Compose acima.
+
+Os atalhos equivalentes são:
 
 ```powershell
 pnpm compose:config
 pnpm compose:up
-```
-
-Para parar os serviços:
-
-```powershell
 pnpm compose:down
 ```
 
@@ -79,4 +105,7 @@ Os testes de contexto da API usam PostgreSQL via Testcontainers e, portanto, pre
 
 ## Decisões ainda futuras
 
-A estratégia de migrations, o contrato da API de negócio, autenticação administrativa, cache Redis e os algoritmos de pathfinding/ordenação serão definidos junto das primeiras funcionalidades. Nenhuma dessas decisões é implementada nesta base.
+As migrations de negócio, o contrato da API, autenticação administrativa, uso
+de cache Redis e os algoritmos de pathfinding/ordenação serão definidos junto
+das primeiras funcionalidades. Nenhuma dessas decisões de negócio é
+implementada nesta base.

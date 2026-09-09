@@ -4,13 +4,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-marketfastroute}
+      POSTGRES_DB: ${POSTGRES_DB:-supermarket}
       POSTGRES_USER: ${POSTGRES_USER:-marketfastroute}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marketfastroute}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - supermarket-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -21,8 +21,6 @@ services:
     image: redis:7-alpine
     ports:
       - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -32,37 +30,57 @@ services:
   api:
     build:
       context: ..
-      dockerfile: apps/api/Dockerfile
+      dockerfile: apps/api/Dockerfile.dev
+    working_dir: /workspace/apps/api
     environment:
       API_PORT: 8080
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB:-marketfastroute}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-supermarket}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-marketfastroute}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-marketfastroute}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_FLYWAY_ENABLED: "true"
       POSTGRES_USER: ${POSTGRES_USER:-marketfastroute}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marketfastroute}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
     ports:
       - "${API_PORT:-8080}:8080"
+    volumes:
+      - ../apps/api:/workspace/apps/api
+      - maven-repository:/root/.m2
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   web:
     build:
       context: ..
-      dockerfile: apps/web/Dockerfile
+      dockerfile: apps/web/Dockerfile.dev
+    working_dir: /workspace/apps/web
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+      VITE_API_URL: ${VITE_API_URL:-/api}
+      VITE_API_PROXY_TARGET: http://api:8080
+      CHOKIDAR_USEPOLLING: "true"
     ports:
       - "${WEB_PORT:-5173}:5173"
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
+    volumes:
+      - ../apps/web:/workspace/apps/web
+      - web-node-modules:/workspace/node_modules
+      - web-app-node-modules:/workspace/apps/web/node_modules
 
 volumes:
-  postgres-data:
-  redis-data:
+  supermarket-postgres-data:
+  maven-repository:
+  web-node-modules:
+  web-app-node-modules:
