@@ -4,7 +4,8 @@ Base técnica do Indoor Supermarket Navigator: uma aplicação web para montar u
 
 ## Estado atual
 
-Esta etapa contém somente a fundação do projeto:
+Esta etapa contém a fundação do projeto e o primeiro fluxo de routing no
+backend:
 
 - frontend React + Vite + TypeScript + shadcn/ui;
 - backend Java + Spring Boot;
@@ -14,9 +15,11 @@ Esta etapa contém somente a fundação do projeto:
 - Docker Compose para subir frontend, backend, PostgreSQL e Redis juntos;
 - Flyway configurado com o schema relacional do MVP versionado em
   `apps/api/src/main/resources/db/migration`;
+- cálculo de rota em `POST /api/v1/routes`, sem persistência da rota;
 - testes automatizados básicos.
 
-Ainda não existem lojas, produtos, mapas, grafos, rotas, autenticação ou endpoints de negócio.
+Os dados administrativos ainda precisam ser cadastrados para produzir uma
+rota; autenticação e os demais endpoints de negócio continuam fora desta etapa.
 
 ## Pré-requisitos
 
@@ -105,6 +108,6 @@ Os testes de contexto da API usam PostgreSQL via Testcontainers e, portanto, pre
 
 ## Decisões ainda futuras
 
-O contrato da API, autenticação administrativa, uso de cache Redis e os
-algoritmos de pathfinding/ordenação serão definidos junto das primeiras
-funcionalidades. Essas decisões de negócio não são implementadas nesta base.
+O contrato completo da API, autenticação administrativa e uso de cache Redis
+continuam futuros. A estratégia de routing do MVP está registrada em
+`docs/ADR-001-routing.md` e implementada no backend.

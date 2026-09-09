@@ -6,10 +6,16 @@ import com.marketfastroute.product.ProductNotFoundException;
 import com.marketfastroute.product.ProductLocationConsistencyException;
 import com.marketfastroute.product.ProductLocationNotFoundException;
 import com.marketfastroute.store.StoreNotFoundException;
+import com.marketfastroute.routing.InvalidRouteRequestException;
+import com.marketfastroute.routing.RouteConfigurationException;
+import com.marketfastroute.routing.RoutePathNotFoundException;
+import com.marketfastroute.routing.RoutePointNotFoundException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -93,6 +99,49 @@ public class ApiExceptionHandler {
 				.body(new ApiErrorResponse(
 						"INVALID_PARAMETER",
 						"Invalid request parameter",
+						Map.of()
+				));
+	}
+
+	@ExceptionHandler({
+			InvalidRouteRequestException.class,
+			MethodArgumentNotValidException.class,
+			HttpMessageNotReadableException.class
+	})
+	public ResponseEntity<ApiErrorResponse> handleInvalidRequest(Exception exception) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ApiErrorResponse(
+						"INVALID_REQUEST",
+						"Invalid request",
+						Map.of()
+				));
+	}
+
+	@ExceptionHandler(RoutePointNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleRoutePointNotFound(RoutePointNotFoundException exception) {
+		String code = "checkout".equals(exception.getPointType())
+				? "ROUTE_CHECKOUT_NOT_FOUND"
+				: "ROUTE_ENTRY_NOT_FOUND";
+		return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+				.body(new ApiErrorResponse(code, "Route endpoint is not configured", Map.of()));
+	}
+
+	@ExceptionHandler(RoutePathNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleRoutePathNotFound(RoutePathNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+				.body(new ApiErrorResponse(
+						"ROUTE_PATH_NOT_FOUND",
+						"No path is available for the requested route",
+						Map.of()
+				));
+	}
+
+	@ExceptionHandler(RouteConfigurationException.class)
+	public ResponseEntity<ApiErrorResponse> handleRouteConfiguration(RouteConfigurationException exception) {
+		return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+				.body(new ApiErrorResponse(
+						"ROUTE_CONFIGURATION_INVALID",
+						"Route configuration is ambiguous",
 						Map.of()
 				));
 	}

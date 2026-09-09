@@ -40,6 +40,21 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, UUID
             select storeProduct
             from StoreProduct storeProduct
             join fetch storeProduct.product product
+            where storeProduct.store.id = :storeId
+              and product.id in :productIds
+              and storeProduct.active = true
+              and product.active = true
+            order by product.id
+            """)
+    List<StoreProduct> findAvailableByStoreIdAndProductIdIn(
+            @Param("storeId") UUID storeId,
+            @Param("productIds") List<UUID> productIds
+    );
+
+    @Query("""
+            select storeProduct
+            from StoreProduct storeProduct
+            join fetch storeProduct.product product
             join fetch product.category category
             where storeProduct.store.id = :storeId
               and storeProduct.active = true
