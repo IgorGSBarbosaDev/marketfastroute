@@ -10,6 +10,16 @@ import java.util.UUID;
 
 public interface ProductLocationRepository extends JpaRepository<ProductLocation, UUID> {
 
+    List<ProductLocation> findByStoreIdOrderById(UUID storeId);
+
+    Optional<ProductLocation> findByStoreIdAndId(UUID storeId, UUID locationId);
+
+    boolean existsByStoreIdAndStoreProductIdAndMapIdAndPrimaryLocationTrue(
+            UUID storeId, UUID storeProductId, UUID mapId);
+
+    boolean existsByStoreIdAndStoreProductIdAndMapIdAndPrimaryLocationTrueAndIdNot(
+            UUID storeId, UUID storeProductId, UUID mapId, UUID locationId);
+
     @Query("""
             select location
             from ProductLocation location

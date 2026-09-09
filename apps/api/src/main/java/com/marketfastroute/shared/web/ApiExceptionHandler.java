@@ -1,5 +1,8 @@
 package com.marketfastroute.shared.web;
 
+import com.marketfastroute.admin.AdminConflictException;
+import com.marketfastroute.admin.AdminResourceNotFoundException;
+import com.marketfastroute.admin.AdminValidationException;
 import com.marketfastroute.map.MapConsistencyException;
 import com.marketfastroute.map.StoreMapNotFoundException;
 import com.marketfastroute.product.ProductNotFoundException;
@@ -10,6 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -20,6 +26,53 @@ import java.util.Map;
 public class ApiExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+	@ExceptionHandler(AdminResourceNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleAdminResourceNotFound(AdminResourceNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ApiErrorResponse(
+						"ADMIN_RESOURCE_NOT_FOUND",
+						exception.getResource() + " not found",
+						Map.of()
+				));
+	}
+
+	@ExceptionHandler(AdminValidationException.class)
+	public ResponseEntity<ApiErrorResponse> handleAdminValidation(AdminValidationException exception) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ApiErrorResponse("ADMIN_VALIDATION_ERROR", exception.getMessage(), Map.of()));
+	}
+
+	@ExceptionHandler(AdminConflictException.class)
+	public ResponseEntity<ApiErrorResponse> handleAdminConflict(AdminConflictException exception) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(new ApiErrorResponse("ADMIN_CONFLICT", exception.getMessage(), Map.of()));
+	}
+
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
+		Map<String, Object> details = exception.getBindingResult().getFieldErrors().stream()
+				.collect(java.util.stream.Collectors.toMap(
+					error -> error.getField(),
+					error -> error.getDefaultMessage() == null ? "Invalid value" : error.getDefaultMessage(),
+					(first, second) -> first,
+					java.util.LinkedHashMap::new
+				));
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ApiErrorResponse("VALIDATION_ERROR", "Request validation failed", details));
+	}
+
+	@ExceptionHandler({HttpMessageNotReadableException.class, jakarta.validation.ConstraintViolationException.class})
+	public ResponseEntity<ApiErrorResponse> handleMalformedRequest(Exception exception) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ApiErrorResponse("INVALID_REQUEST", "Request body or parameter is invalid", Map.of()));
+	}
+
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(new ApiErrorResponse("DATA_INTEGRITY_CONFLICT", "The requested change conflicts with existing data", Map.of()));
+	}
 
 	@ExceptionHandler(StoreNotFoundException.class)
 	public ResponseEntity<ApiErrorResponse> handleStoreNotFound(StoreNotFoundException exception) {
