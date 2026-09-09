@@ -24,6 +24,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.Map;
 
 @RestControllerAdvice
@@ -54,7 +56,14 @@ public class ApiExceptionHandler {
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
+	public ResponseEntity<ApiErrorResponse> handleValidation(
+			MethodArgumentNotValidException exception,
+			HttpServletRequest request
+	) {
+		if (!request.getRequestURI().startsWith("/api/v1/admin")) {
+			return handleInvalidRequest(exception);
+		}
+
 		Map<String, Object> details = exception.getBindingResult().getFieldErrors().stream()
 				.collect(java.util.stream.Collectors.toMap(
 					error -> error.getField(),
