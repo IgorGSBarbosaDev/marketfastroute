@@ -31,7 +31,7 @@ class StoreServiceTest {
     @Test
     void returnsMappedStores() {
         Store store = newStore("Store One", "STORE-1");
-        when(storeRepository.findAll()).thenReturn(List.of(store));
+        when(storeRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(store));
 
         List<StoreResponse> result = storeService.findAll();
 
@@ -44,13 +44,13 @@ class StoreServiceTest {
                 "SP",
                 true
         )), result);
-        verify(storeRepository).findAll();
+        verify(storeRepository).findByActiveTrueOrderByNameAsc();
     }
 
     @Test
     void returnsMappedStoreWhenItExists() {
         Store store = newStore("Store One", "STORE-1");
-        when(storeRepository.findById(store.getId())).thenReturn(Optional.of(store));
+        when(storeRepository.findByIdAndActiveTrue(store.getId())).thenReturn(Optional.of(store));
 
         StoreResponse result = storeService.findById(store.getId());
 
@@ -63,13 +63,13 @@ class StoreServiceTest {
                 "SP",
                 true
         ), result);
-        verify(storeRepository).findById(store.getId());
+        verify(storeRepository).findByIdAndActiveTrue(store.getId());
     }
 
     @Test
     void throwsStoreNotFoundWhenRequestedStoreDoesNotExist() {
         UUID storeId = UUID.randomUUID();
-        when(storeRepository.findById(storeId)).thenReturn(Optional.empty());
+        when(storeRepository.findByIdAndActiveTrue(storeId)).thenReturn(Optional.empty());
 
         StoreNotFoundException exception = assertThrows(
                 StoreNotFoundException.class,
@@ -77,7 +77,15 @@ class StoreServiceTest {
         );
 
         assertEquals("Store not found: " + storeId, exception.getMessage());
-        verify(storeRepository).findById(storeId);
+        verify(storeRepository).findByIdAndActiveTrue(storeId);
+    }
+
+    @Test
+    void doesNotReturnInactiveStoreWhenRequestedDirectly() {
+        UUID storeId = UUID.randomUUID();
+        when(storeRepository.findByIdAndActiveTrue(storeId)).thenReturn(Optional.empty());
+
+        assertThrows(StoreNotFoundException.class, () -> storeService.findById(storeId));
     }
 
     private Store newStore(String name, String code) {

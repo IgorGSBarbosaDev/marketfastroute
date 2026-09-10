@@ -1,9 +1,6 @@
 package com.marketfastroute.map;
 
 import com.marketfastroute.store.StoreMap;
-import com.marketfastroute.store.StoreMapRepository;
-import com.marketfastroute.store.StoreNotFoundException;
-import com.marketfastroute.store.StoreRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,8 +14,7 @@ import java.util.function.Predicate;
 @Transactional(readOnly = true)
 public class MapService {
 
-    private final StoreRepository storeRepository;
-    private final StoreMapRepository storeMapRepository;
+    private final ActiveStoreMapResolver activeStoreMapResolver;
     private final SectorRepository sectorRepository;
     private final AisleRepository aisleRepository;
     private final ShelfBlockRepository shelfBlockRepository;
@@ -28,8 +24,7 @@ public class MapService {
     private final MapMapper mapMapper;
 
     public MapService(
-            StoreRepository storeRepository,
-            StoreMapRepository storeMapRepository,
+            ActiveStoreMapResolver activeStoreMapResolver,
             SectorRepository sectorRepository,
             AisleRepository aisleRepository,
             ShelfBlockRepository shelfBlockRepository,
@@ -38,8 +33,7 @@ public class MapService {
             MapEdgeRepository mapEdgeRepository,
             MapMapper mapMapper
     ) {
-        this.storeRepository = storeRepository;
-        this.storeMapRepository = storeMapRepository;
+        this.activeStoreMapResolver = activeStoreMapResolver;
         this.sectorRepository = sectorRepository;
         this.aisleRepository = aisleRepository;
         this.shelfBlockRepository = shelfBlockRepository;
@@ -50,25 +44,8 @@ public class MapService {
     }
 
     public StoreMapResponse findActiveByStore(UUID storeId) {
-        if (!storeRepository.existsById(storeId)) {
-            throw new StoreNotFoundException(storeId);
-        }
-
-        StoreMap storeMap = storeMapRepository.findActiveByStoreId(storeId)
-                .orElseThrow(() -> new StoreMapNotFoundException(storeId));
-
-        if (storeMap.getStatus() != MapStatus.ACTIVE) {
-            throw new StoreMapNotFoundException(storeId);
-        }
-
-        if (storeMap.getStore() == null || !Objects.equals(storeMap.getStore().getId(), storeId)) {
-            throw new MapConsistencyException("Active map belongs to another store");
-        }
-
+        StoreMap storeMap = activeStoreMapResolver.resolve(storeId);
         UUID mapId = storeMap.getId();
-        if (mapId == null) {
-            throw new MapConsistencyException("Active map has no identifier");
-        }
         List<Sector> sectors = activeElements(
                 sectorRepository.findByStoreMap_IdAndActiveTrueOrderById(mapId),
                 Sector::isActive,

@@ -36,6 +36,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -79,6 +80,23 @@ class RepositoryPersistenceTest {
 
     @Autowired
     private MapEdgeRepository mapEdgeRepository;
+
+    @Test
+    void queriesOnlyActiveStoresForPublicAvailability() {
+        Store activeStore = newStore("STORE-ACTIVE");
+        activeStore.setName("Active Store");
+        Store inactiveStore = newStore("STORE-INACTIVE");
+        inactiveStore.setName("Inactive Store");
+        inactiveStore.setActive(false);
+        storeRepository.saveAllAndFlush(List.of(activeStore, inactiveStore));
+
+        assertEquals(List.of(activeStore.getId()),
+                storeRepository.findByActiveTrueOrderByNameAsc().stream().map(Store::getId).toList());
+        assertTrue(storeRepository.findByIdAndActiveTrue(activeStore.getId()).isPresent());
+        assertTrue(storeRepository.findByIdAndActiveTrue(inactiveStore.getId()).isEmpty());
+        assertTrue(storeRepository.existsByIdAndActiveTrue(activeStore.getId()));
+        assertFalse(storeRepository.existsByIdAndActiveTrue(inactiveStore.getId()));
+    }
 
     @Test
     void persistsCatalogAndAvailabilityAndQueriesEachRepository() {

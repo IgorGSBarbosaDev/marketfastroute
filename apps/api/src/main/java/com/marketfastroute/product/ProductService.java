@@ -51,7 +51,7 @@ public class ProductService {
     }
 
     private void ensureStoreExists(UUID storeId) {
-        if (!storeRepository.existsById(storeId)) {
+        if (!storeRepository.existsByIdAndActiveTrue(storeId)) {
             throw new StoreNotFoundException(storeId);
         }
     }

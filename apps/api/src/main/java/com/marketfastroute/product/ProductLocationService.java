@@ -1,12 +1,11 @@
 package com.marketfastroute.product;
 
 import com.marketfastroute.map.Aisle;
+import com.marketfastroute.map.ActiveStoreMapResolver;
 import com.marketfastroute.map.MapNode;
 import com.marketfastroute.map.Sector;
 import com.marketfastroute.map.ShelfBlock;
 import com.marketfastroute.store.StoreMap;
-import com.marketfastroute.store.StoreNotFoundException;
-import com.marketfastroute.store.StoreRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,39 +17,41 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ProductLocationService {
 
-    private final StoreRepository storeRepository;
+    private final ActiveStoreMapResolver activeStoreMapResolver;
     private final StoreProductRepository storeProductRepository;
     private final ProductLocationRepository productLocationRepository;
     private final ProductLocationMapper productLocationMapper;
 
     public ProductLocationService(
-            StoreRepository storeRepository,
+            ActiveStoreMapResolver activeStoreMapResolver,
             StoreProductRepository storeProductRepository,
             ProductLocationRepository productLocationRepository,
             ProductLocationMapper productLocationMapper
     ) {
-        this.storeRepository = storeRepository;
+        this.activeStoreMapResolver = activeStoreMapResolver;
         this.storeProductRepository = storeProductRepository;
         this.productLocationRepository = productLocationRepository;
         this.productLocationMapper = productLocationMapper;
     }
 
     public List<ProductLocationResponse> findByProduct(UUID storeId, UUID productId) {
-        ensureStoreExists(storeId);
+        StoreMap activeMap = activeStoreMapResolver.resolve(storeId);
         ensureProductIsAvailableInStore(storeId, productId);
 
-        return productLocationRepository.findActiveByStoreIdAndProductId(storeId, productId).stream()
+        return productLocationRepository.findActiveByStoreIdAndMapIdAndProductId(
+                        storeId, activeMap.getId(), productId)
+                .stream()
                 .filter(ProductLocation::isActive)
                 .map(location -> toResponseAfterValidation(location, storeId, productId))
                 .toList();
     }
 
     public ProductLocationResponse findPrimaryByProduct(UUID storeId, UUID productId) {
-        ensureStoreExists(storeId);
+        StoreMap activeMap = activeStoreMapResolver.resolve(storeId);
         ensureProductIsAvailableInStore(storeId, productId);
 
         List<ProductLocation> primaryLocations = productLocationRepository
-                .findActivePrimaryByStoreIdAndProductId(storeId, productId);
+                .findActivePrimaryByStoreIdAndMapId(storeId, activeMap.getId(), productId);
 
         primaryLocations.forEach(location -> validateConsistency(location, storeId, productId));
         if (primaryLocations.isEmpty()) {
@@ -71,11 +72,12 @@ public class ProductLocationService {
             UUID productId,
             UUID locationId
     ) {
-        ensureStoreExists(storeId);
+        StoreMap activeMap = activeStoreMapResolver.resolve(storeId);
         ensureProductIsAvailableInStore(storeId, productId);
 
         ProductLocation location = productLocationRepository
-                .findActiveByIdAndStoreIdAndProductId(locationId, storeId, productId)
+                .findActiveByIdAndStoreIdAndMapIdAndProductId(
+                        locationId, storeId, activeMap.getId(), productId)
                 .orElseThrow(() -> new ProductLocationNotFoundException(storeId, productId, locationId));
 
         validateConsistency(location, storeId, productId);
@@ -99,12 +101,6 @@ public class ProductLocationService {
     ) {
         validateConsistency(location, storeId, productId);
         return productLocationMapper.toResponse(location);
-    }
-
-    private void ensureStoreExists(UUID storeId) {
-        if (!storeRepository.existsById(storeId)) {
-            throw new StoreNotFoundException(storeId);
-        }
     }
 
     private void validateConsistency(ProductLocation location, UUID storeId, UUID productId) {

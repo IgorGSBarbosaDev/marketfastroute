@@ -19,13 +19,13 @@ public class StoreService {
     }
 
     public List<StoreResponse> findAll() {
-        return storeRepository.findAll().stream()
+        return storeRepository.findByActiveTrueOrderByNameAsc().stream()
                 .map(storeMapper::toResponse)
                 .toList();
     }
 
     public StoreResponse findById(UUID storeId) {
-        return storeRepository.findById(storeId)
+        return storeRepository.findByIdAndActiveTrue(storeId)
                 .map(storeMapper::toResponse)
                 .orElseThrow(() -> new StoreNotFoundException(storeId));
     }

@@ -31,14 +31,18 @@ public interface ProductLocationRepository extends JpaRepository<ProductLocation
             left join fetch location.shelfBlock shelfBlock
             join fetch location.navigationNode navigationNode
             where location.storeId = :storeId
+              and location.mapId = :mapId
               and storeProduct.store.id = :storeId
               and product.id = :productId
               and storeProduct.active = true
               and product.active = true
               and location.active = true
+              and storeMap.id = :mapId
+              and storeMap.store.id = :storeId
             """)
-    List<ProductLocation> findActiveByStoreIdAndProductId(
+    List<ProductLocation> findActiveByStoreIdAndMapIdAndProductId(
             @Param("storeId") UUID storeId,
+            @Param("mapId") UUID mapId,
             @Param("productId") UUID productId
     );
 
@@ -53,15 +57,19 @@ public interface ProductLocationRepository extends JpaRepository<ProductLocation
             left join fetch location.shelfBlock shelfBlock
             join fetch location.navigationNode navigationNode
             where location.storeId = :storeId
+              and location.mapId = :mapId
               and storeProduct.store.id = :storeId
               and product.id = :productId
               and storeProduct.active = true
               and product.active = true
               and location.active = true
+              and storeMap.id = :mapId
+              and storeMap.store.id = :storeId
               and location.primaryLocation = true
             """)
-    List<ProductLocation> findActivePrimaryByStoreIdAndProductId(
+    List<ProductLocation> findActivePrimaryByStoreIdAndMapId(
             @Param("storeId") UUID storeId,
+            @Param("mapId") UUID mapId,
             @Param("productId") UUID productId
     );
 
@@ -103,15 +111,19 @@ public interface ProductLocationRepository extends JpaRepository<ProductLocation
             join fetch location.navigationNode navigationNode
             where location.id = :locationId
               and location.storeId = :storeId
+              and location.mapId = :mapId
               and storeProduct.store.id = :storeId
               and product.id = :productId
               and storeProduct.active = true
               and product.active = true
               and location.active = true
+              and storeMap.id = :mapId
+              and storeMap.store.id = :storeId
             """)
-    Optional<ProductLocation> findActiveByIdAndStoreIdAndProductId(
+    Optional<ProductLocation> findActiveByIdAndStoreIdAndMapIdAndProductId(
             @Param("locationId") UUID locationId,
             @Param("storeId") UUID storeId,
+            @Param("mapId") UUID mapId,
             @Param("productId") UUID productId
     );
 }

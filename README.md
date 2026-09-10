@@ -19,7 +19,7 @@ backend:
 - testes automatizados básicos.
 
 Os dados administrativos ainda precisam ser cadastrados para produzir uma
-rota; autenticação e os demais endpoints de negócio continuam fora desta etapa.
+rota; autenticação administrativa continua fora desta etapa.
 
 ## Pré-requisitos
 
@@ -108,6 +108,6 @@ Os testes de contexto da API usam PostgreSQL via Testcontainers e, portanto, pre
 
 ## Decisões ainda futuras
 
-O contrato completo da API, autenticação administrativa e uso de cache Redis
-continuam futuros. A estratégia de routing do MVP está registrada em
+Autenticação administrativa e uso de cache Redis continuam futuros. A
+estratégia de routing do MVP está registrada em
 `docs/ADR-001-routing.md` e implementada no backend.

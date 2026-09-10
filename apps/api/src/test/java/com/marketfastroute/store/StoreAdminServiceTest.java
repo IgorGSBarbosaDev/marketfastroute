@@ -14,6 +14,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -57,5 +58,22 @@ class StoreAdminServiceTest {
         assertThrows(AdminConflictException.class, () -> service.update(
                 storeId,
                 new UpdateStoreRequest("Store", "STORE-2", "Address", "City", "SP", false)));
+    }
+
+    @Test
+    void findsAndUpdatesAnInactiveStoreForAdministration() {
+        UUID storeId = UUID.randomUUID();
+        Store store = new Store();
+        store.setId(storeId);
+        store.setActive(false);
+        when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
+        when(storeRepository.existsByCodeAndIdNot("STORE-1", storeId)).thenReturn(false);
+        when(storeRepository.save(store)).thenReturn(store);
+
+        var response = service.update(storeId,
+                new UpdateStoreRequest("Store", "STORE-1", "Address", "City", "SP", true));
+
+        assertTrue(response.active());
+        assertTrue(store.isActive());
     }
 }

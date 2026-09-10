@@ -89,7 +89,7 @@ class ProductLocationRepositoryTest {
         insertLocation(UUID.randomUUID(), storeId, otherStoreProductId, mapId, nodeId, false, true);
 
         List<ProductLocation> result = productLocationRepository
-                .findActiveByStoreIdAndProductId(storeId, productId);
+                .findActiveByStoreIdAndMapIdAndProductId(storeId, mapId, productId);
 
         assertEquals(List.of(primaryId, secondaryId), result.stream().map(ProductLocation::getId).toList());
         assertEquals(productId, result.getFirst().getStoreProduct().getProduct().getId());
@@ -117,10 +117,43 @@ class ProductLocationRepositoryTest {
         insertLocation(secondaryId, storeId, storeProductId, mapId, nodeId, false, true);
 
         List<ProductLocation> result = productLocationRepository
-                .findActivePrimaryByStoreIdAndProductId(storeId, productId);
+                .findActivePrimaryByStoreIdAndMapId(storeId, mapId, productId);
 
         assertEquals(List.of(primaryId), result.stream().map(ProductLocation::getId).toList());
         assertTrue(result.getFirst().isPrimaryLocation());
+    }
+
+    @Test
+    void scopesLocationsToTheRequestedMapVersion() {
+        UUID storeId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID storeProductId = UUID.randomUUID();
+        UUID activeMapId = UUID.randomUUID();
+        UUID archivedMapId = UUID.randomUUID();
+        UUID activeNodeId = UUID.randomUUID();
+        UUID archivedNodeId = UUID.randomUUID();
+        UUID activeLocationId = UUID.randomUUID();
+        UUID archivedLocationId = UUID.randomUUID();
+
+        insertStore(storeId);
+        insertCategory(categoryId);
+        insertProduct(productId, categoryId, "SKU-MAP-VERSION", true);
+        insertStoreProduct(storeProductId, storeId, productId, true);
+        insertStoreMap(activeMapId, storeId, 1, "ACTIVE");
+        insertStoreMap(archivedMapId, storeId, 2, "ARCHIVED");
+        insertMapNode(activeNodeId, activeMapId);
+        insertMapNode(archivedNodeId, archivedMapId);
+        insertLocation(activeLocationId, storeId, storeProductId, activeMapId, activeNodeId, true, true);
+        insertLocation(archivedLocationId, storeId, storeProductId, archivedMapId, archivedNodeId, true, true);
+
+        List<ProductLocation> result = productLocationRepository
+                .findActiveByStoreIdAndMapIdAndProductId(storeId, activeMapId, productId);
+        List<ProductLocation> primaryResult = productLocationRepository
+                .findActivePrimaryByStoreIdAndMapId(storeId, activeMapId, productId);
+
+        assertEquals(List.of(activeLocationId), result.stream().map(ProductLocation::getId).toList());
+        assertEquals(List.of(activeLocationId), primaryResult.stream().map(ProductLocation::getId).toList());
     }
 
     @Test
@@ -147,11 +180,13 @@ class ProductLocationRepositoryTest {
         insertLocation(locationId, storeId, storeProductId, mapId, nodeId, false, true);
 
         assertTrue(productLocationRepository
-                .findActiveByIdAndStoreIdAndProductId(locationId, storeId, productId).isPresent());
+                .findActiveByIdAndStoreIdAndMapIdAndProductId(locationId, storeId, mapId, productId).isPresent());
         assertTrue(productLocationRepository
-                .findActiveByIdAndStoreIdAndProductId(locationId, otherStoreId, otherProductId).isEmpty());
+                .findActiveByIdAndStoreIdAndMapIdAndProductId(
+                        locationId, otherStoreId, mapId, otherProductId).isEmpty());
         assertTrue(productLocationRepository
-                .findActiveByIdAndStoreIdAndProductId(locationId, storeId, otherProductId).isEmpty());
+                .findActiveByIdAndStoreIdAndMapIdAndProductId(
+                        locationId, storeId, mapId, otherProductId).isEmpty());
     }
 
     @Test
@@ -175,10 +210,10 @@ class ProductLocationRepositoryTest {
         insertLocation(UUID.randomUUID(), storeId, inactiveAssociationId, mapId, nodeId, false, true);
         insertLocation(UUID.randomUUID(), storeId, inactiveProductAssociationId, mapId, nodeId, false, true);
 
-        assertFalse(productLocationRepository.findActiveByStoreIdAndProductId(
-                storeId, inactiveAssociationProductId).iterator().hasNext());
-        assertFalse(productLocationRepository.findActiveByStoreIdAndProductId(
-                storeId, inactiveProductId).iterator().hasNext());
+        assertFalse(productLocationRepository.findActiveByStoreIdAndMapIdAndProductId(
+                storeId, mapId, inactiveAssociationProductId).iterator().hasNext());
+        assertFalse(productLocationRepository.findActiveByStoreIdAndMapIdAndProductId(
+                storeId, mapId, inactiveProductId).iterator().hasNext());
     }
 
     private void insertStore(UUID storeId) {
@@ -206,11 +241,15 @@ class ProductLocationRepositoryTest {
     }
 
     private void insertStoreMap(UUID mapId, UUID storeId) {
+        insertStoreMap(mapId, storeId, 1, "ACTIVE");
+    }
+
+    private void insertStoreMap(UUID mapId, UUID storeId, int version, String status) {
         jdbcTemplate.update("""
                 INSERT INTO store_map
                     (id, store_id, version, name, width, height, scale_meters_per_unit, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')
-                """, mapId, storeId, 1, "Map", 100, 80, 1);
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, mapId, storeId, version, "Map", 100, 80, 1, status);
     }
 
     private void insertMapNode(UUID nodeId, UUID mapId) {

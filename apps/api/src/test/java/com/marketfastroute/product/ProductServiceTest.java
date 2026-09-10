@@ -42,13 +42,13 @@ class ProductServiceTest {
         Product product = newProduct("Milk", "SKU-MILK", true);
         StoreProduct storeProduct = newStoreProduct(product, true);
 
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeProductRepository.findAvailableByStoreId(storeId)).thenReturn(List.of(storeProduct));
 
         List<ProductResponse> result = productService.findAvailableByStore(storeId, null);
 
         assertEquals(List.of(productResponse(product)), result);
-        verify(storeRepository).existsById(storeId);
+        verify(storeRepository).existsByIdAndActiveTrue(storeId);
         verify(storeProductRepository).findAvailableByStoreId(storeId);
     }
 
@@ -58,7 +58,7 @@ class ProductServiceTest {
         Product product = newProduct("Milk", "SKU-MILK", true);
         StoreProduct storeProduct = newStoreProduct(product, true);
 
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeProductRepository.findAvailableByStoreIdAndProductId(storeId, product.getId()))
                 .thenReturn(Optional.of(storeProduct));
 
@@ -74,7 +74,7 @@ class ProductServiceTest {
         Product product = newProduct("Milk", "SKU-MILK", true);
         StoreProduct storeProduct = newStoreProduct(product, true);
 
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeProductRepository.searchAvailableByStoreId(storeId, "milk"))
                 .thenReturn(List.of(storeProduct));
 
@@ -88,7 +88,7 @@ class ProductServiceTest {
     @Test
     void rejectsRequestsForANonexistentStore() {
         UUID storeId = UUID.randomUUID();
-        when(storeRepository.existsById(storeId)).thenReturn(false);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(false);
 
         assertThrows(
                 StoreNotFoundException.class,
@@ -102,7 +102,7 @@ class ProductServiceTest {
     void doesNotReturnAProductThatIsNotAssociatedWithTheStore() {
         UUID storeId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeProductRepository.findAvailableByStoreIdAndProductId(storeId, productId))
                 .thenReturn(Optional.empty());
 
@@ -117,7 +117,7 @@ class ProductServiceTest {
         UUID storeId = UUID.randomUUID();
         Product product = newProduct("Milk", "SKU-MILK", false);
         StoreProduct storeProduct = newStoreProduct(product, true);
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeProductRepository.findAvailableByStoreId(storeId)).thenReturn(List.of(storeProduct));
 
         assertTrue(productService.findAvailableByStore(storeId, null).isEmpty());
@@ -128,7 +128,7 @@ class ProductServiceTest {
         UUID storeId = UUID.randomUUID();
         Product product = newProduct("Milk", "SKU-MILK", true);
         StoreProduct storeProduct = newStoreProduct(product, false);
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeProductRepository.findAvailableByStoreId(storeId)).thenReturn(List.of(storeProduct));
 
         assertTrue(productService.findAvailableByStore(storeId, null).isEmpty());

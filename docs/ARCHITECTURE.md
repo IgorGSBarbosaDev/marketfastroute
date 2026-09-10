@@ -272,6 +272,14 @@ GET  /api/v1/stores/{storeId}/map
 POST /api/v1/routes
 ```
 
+Os endpoints públicos operam somente sobre lojas ativas. Uma loja inativa é
+tratada como indisponível e retorna `STORE_NOT_FOUND`, assim como uma loja
+inexistente. Os endpoints públicos de localização de produtos resolvem
+automaticamente o mapa `ACTIVE` da loja; o `mapId` não faz parte da URL e
+localizações pertencentes a mapas `DRAFT` ou `ARCHIVED` permanecem disponíveis
+apenas para administração. Se uma loja ativa não possuir mapa ativo, o fluxo
+retorna `STORE_MAP_NOT_FOUND`.
+
 Endpoints finais devem ser definidos em contrato de API antes de estabilização.
 
 ---

@@ -1,13 +1,13 @@
 package com.marketfastroute.product;
 
 import com.marketfastroute.map.Aisle;
+import com.marketfastroute.map.ActiveStoreMapResolver;
 import com.marketfastroute.map.MapNode;
 import com.marketfastroute.map.Sector;
 import com.marketfastroute.map.ShelfBlock;
 import com.marketfastroute.store.Store;
 import com.marketfastroute.store.StoreMap;
 import com.marketfastroute.store.StoreNotFoundException;
-import com.marketfastroute.store.StoreRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
 class ProductLocationServiceTest {
 
     @Mock
-    private StoreRepository storeRepository;
+    private ActiveStoreMapResolver activeStoreMapResolver;
 
     @Mock
     private StoreProductRepository storeProductRepository;
@@ -45,7 +45,7 @@ class ProductLocationServiceTest {
     @BeforeEach
     void setUp() {
         productLocationService = new ProductLocationService(
-                storeRepository,
+                activeStoreMapResolver,
                 storeProductRepository,
                 productLocationRepository,
                 new ProductLocationMapper()
@@ -66,10 +66,10 @@ class ProductLocationServiceTest {
         primary.setX(new BigDecimal("10.0000"));
         primary.setY(new BigDecimal("20.0000"));
 
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(activeStoreMapResolver.resolve(storeId)).thenReturn(storeMap);
         when(storeProductRepository.findAvailableByStoreIdAndProductId(storeId, productId))
                 .thenReturn(Optional.of(storeProduct));
-        when(productLocationRepository.findActiveByStoreIdAndProductId(storeId, productId))
+        when(productLocationRepository.findActiveByStoreIdAndMapIdAndProductId(storeId, mapId, productId))
                 .thenReturn(List.of(primary, secondary));
 
         List<ProductLocationResponse> result = productLocationService.findByProduct(storeId, productId);
@@ -84,22 +84,23 @@ class ProductLocationServiceTest {
                         secondary.getId(), productId, storeId, mapId, null, null, null,
                         null, null, null, null, null, secondary.getNavigationNodeId(), false)
         ), result);
-        verify(productLocationRepository).findActiveByStoreIdAndProductId(storeId, productId);
+        verify(productLocationRepository).findActiveByStoreIdAndMapIdAndProductId(storeId, mapId, productId);
     }
 
     @Test
     void doesNotExposeAnInactiveLocationEvenIfRepositoryReturnsOne() {
         UUID storeId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
+        UUID mapId = UUID.randomUUID();
         StoreProduct storeProduct = storeProduct(storeId, productId, true, true);
-        ProductLocation inactive = location(storeId, productId, UUID.randomUUID(), storeProduct,
-                storeMap(storeId, UUID.randomUUID()), false);
+        StoreMap storeMap = storeMap(storeId, mapId);
+        ProductLocation inactive = location(storeId, productId, mapId, storeProduct, storeMap, false);
         inactive.setActive(false);
 
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(activeStoreMapResolver.resolve(storeId)).thenReturn(storeMap);
         when(storeProductRepository.findAvailableByStoreIdAndProductId(storeId, productId))
                 .thenReturn(Optional.of(storeProduct));
-        when(productLocationRepository.findActiveByStoreIdAndProductId(storeId, productId))
+        when(productLocationRepository.findActiveByStoreIdAndMapIdAndProductId(storeId, mapId, productId))
                 .thenReturn(List.of(inactive));
 
         assertTrue(productLocationService.findByProduct(storeId, productId).isEmpty());
@@ -111,10 +112,11 @@ class ProductLocationServiceTest {
         UUID productId = UUID.randomUUID();
         StoreProduct storeProduct = storeProduct(storeId, productId, true, true);
         UUID mapId = UUID.randomUUID();
-        ProductLocation primary = location(storeId, productId, mapId, storeProduct, storeMap(storeId, mapId), true);
+        StoreMap storeMap = storeMap(storeId, mapId);
+        ProductLocation primary = location(storeId, productId, mapId, storeProduct, storeMap, true);
 
-        prepareAvailableProduct(storeId, productId, storeProduct);
-        when(productLocationRepository.findActivePrimaryByStoreIdAndProductId(storeId, productId))
+        prepareAvailableProduct(storeId, productId, storeProduct, mapId);
+        when(productLocationRepository.findActivePrimaryByStoreIdAndMapId(storeId, mapId, productId))
                 .thenReturn(List.of(primary));
 
         assertEquals(primary.getId(), productLocationService.findPrimaryByProduct(storeId, productId).id());
@@ -124,10 +126,11 @@ class ProductLocationServiceTest {
     void returnsNotFoundWhenThereIsNoPrimaryLocation() {
         UUID storeId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
+        UUID mapId = UUID.randomUUID();
         StoreProduct storeProduct = storeProduct(storeId, productId, true, true);
 
-        prepareAvailableProduct(storeId, productId, storeProduct);
-        when(productLocationRepository.findActivePrimaryByStoreIdAndProductId(storeId, productId))
+        prepareAvailableProduct(storeId, productId, storeProduct, mapId);
+        when(productLocationRepository.findActivePrimaryByStoreIdAndMapId(storeId, mapId, productId))
                 .thenReturn(List.of());
 
         assertThrows(
@@ -140,14 +143,14 @@ class ProductLocationServiceTest {
     void rejectsMoreThanOnePrimaryLocationWithoutChoosingArbitrarily() {
         UUID storeId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
+        UUID mapId = UUID.randomUUID();
         StoreProduct storeProduct = storeProduct(storeId, productId, true, true);
-        ProductLocation first = location(storeId, productId, UUID.randomUUID(), storeProduct,
-                storeMap(storeId, UUID.randomUUID()), true);
-        ProductLocation second = location(storeId, productId, UUID.randomUUID(), storeProduct,
-                storeMap(storeId, UUID.randomUUID()), true);
+        StoreMap storeMap = storeMap(storeId, mapId);
+        ProductLocation first = location(storeId, productId, mapId, storeProduct, storeMap, true);
+        ProductLocation second = location(storeId, productId, mapId, storeProduct, storeMap, true);
 
-        prepareAvailableProduct(storeId, productId, storeProduct);
-        when(productLocationRepository.findActivePrimaryByStoreIdAndProductId(storeId, productId))
+        prepareAvailableProduct(storeId, productId, storeProduct, mapId);
+        when(productLocationRepository.findActivePrimaryByStoreIdAndMapId(storeId, mapId, productId))
                 .thenReturn(List.of(first, second));
 
         assertThrows(
@@ -164,9 +167,9 @@ class ProductLocationServiceTest {
         UUID mapId = UUID.randomUUID();
         ProductLocation location = location(storeId, productId, mapId, storeProduct, storeMap(storeId, mapId), false);
 
-        prepareAvailableProduct(storeId, productId, storeProduct);
-        when(productLocationRepository.findActiveByIdAndStoreIdAndProductId(
-                location.getId(), storeId, productId)).thenReturn(Optional.of(location));
+        prepareAvailableProduct(storeId, productId, storeProduct, mapId);
+        when(productLocationRepository.findActiveByIdAndStoreIdAndMapIdAndProductId(
+                location.getId(), storeId, mapId, productId)).thenReturn(Optional.of(location));
 
         assertEquals(location.getId(), productLocationService
                 .findById(storeId, productId, location.getId()).id());
@@ -176,11 +179,13 @@ class ProductLocationServiceTest {
     void returnsNotFoundForAnInactiveOrUnknownLocation() {
         UUID storeId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
+        UUID mapId = UUID.randomUUID();
         StoreProduct storeProduct = storeProduct(storeId, productId, true, true);
 
-        prepareAvailableProduct(storeId, productId, storeProduct);
+        prepareAvailableProduct(storeId, productId, storeProduct, mapId);
         UUID locationId = UUID.randomUUID();
-        when(productLocationRepository.findActiveByIdAndStoreIdAndProductId(locationId, storeId, productId))
+        when(productLocationRepository.findActiveByIdAndStoreIdAndMapIdAndProductId(
+                locationId, storeId, mapId, productId))
                 .thenReturn(Optional.empty());
 
         assertThrows(
@@ -190,10 +195,29 @@ class ProductLocationServiceTest {
     }
 
     @Test
+    void doesNotExposeALocationThatExistsOnlyOnAnArchivedMap() {
+        UUID storeId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID activeMapId = UUID.randomUUID();
+        StoreProduct storeProduct = storeProduct(storeId, productId, true, true);
+
+        prepareAvailableProduct(storeId, productId, storeProduct, activeMapId);
+        when(productLocationRepository.findActivePrimaryByStoreIdAndMapId(
+                storeId, activeMapId, productId)).thenReturn(List.of());
+
+        assertThrows(
+                ProductLocationNotFoundException.class,
+                () -> productLocationService.findPrimaryByProduct(storeId, productId)
+        );
+        verify(productLocationRepository).findActivePrimaryByStoreIdAndMapId(
+                storeId, activeMapId, productId);
+    }
+
+    @Test
     void rejectsARequestForANonexistentStore() {
         UUID storeId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        when(storeRepository.existsById(storeId)).thenReturn(false);
+        when(activeStoreMapResolver.resolve(storeId)).thenThrow(new StoreNotFoundException(storeId));
 
         assertThrows(
                 StoreNotFoundException.class,
@@ -207,7 +231,8 @@ class ProductLocationServiceTest {
     void rejectsAProductThatIsNotAssociatedWithTheStore() {
         UUID storeId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        StoreMap activeMap = storeMap(storeId, UUID.randomUUID());
+        when(activeStoreMapResolver.resolve(storeId)).thenReturn(activeMap);
         when(storeProductRepository.findAvailableByStoreIdAndProductId(storeId, productId))
                 .thenReturn(Optional.empty());
 
@@ -223,8 +248,10 @@ class ProductLocationServiceTest {
     void rejectsAnInactiveStoreProduct() {
         UUID storeId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
+        UUID mapId = UUID.randomUUID();
         StoreProduct storeProduct = storeProduct(storeId, productId, false, true);
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        StoreMap activeMap = storeMap(storeId, mapId);
+        when(activeStoreMapResolver.resolve(storeId)).thenReturn(activeMap);
         when(storeProductRepository.findAvailableByStoreIdAndProductId(storeId, productId))
                 .thenReturn(Optional.of(storeProduct));
 
@@ -233,15 +260,18 @@ class ProductLocationServiceTest {
                 () -> productLocationService.findByProduct(storeId, productId)
         );
 
-        verify(productLocationRepository, never()).findActiveByStoreIdAndProductId(storeId, productId);
+        verify(productLocationRepository, never())
+                .findActiveByStoreIdAndMapIdAndProductId(storeId, mapId, productId);
     }
 
     @Test
     void rejectsAnInactiveProduct() {
         UUID storeId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
+        UUID mapId = UUID.randomUUID();
         StoreProduct storeProduct = storeProduct(storeId, productId, true, false);
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        StoreMap activeMap = storeMap(storeId, mapId);
+        when(activeStoreMapResolver.resolve(storeId)).thenReturn(activeMap);
         when(storeProductRepository.findAvailableByStoreIdAndProductId(storeId, productId))
                 .thenReturn(Optional.of(storeProduct));
 
@@ -250,7 +280,8 @@ class ProductLocationServiceTest {
                 () -> productLocationService.findByProduct(storeId, productId)
         );
 
-        verify(productLocationRepository, never()).findActiveByStoreIdAndProductId(storeId, productId);
+        verify(productLocationRepository, never())
+                .findActiveByStoreIdAndMapIdAndProductId(storeId, mapId, productId);
     }
 
     @Test
@@ -263,8 +294,8 @@ class ProductLocationServiceTest {
         ProductLocation location = location(storeId, productId, mapId, storeProduct,
                 storeMap(otherStoreId, mapId), false);
 
-        prepareAvailableProduct(storeId, productId, storeProduct);
-        when(productLocationRepository.findActiveByStoreIdAndProductId(storeId, productId))
+        prepareAvailableProduct(storeId, productId, storeProduct, mapId);
+        when(productLocationRepository.findActiveByStoreIdAndMapIdAndProductId(storeId, mapId, productId))
                 .thenReturn(List.of(location));
 
         assertThrows(
@@ -306,8 +337,8 @@ class ProductLocationServiceTest {
         lenient().when(shelfBlock.getSectorId()).thenReturn(sectorId);
         lenient().when(shelfBlock.getAisleId()).thenReturn(UUID.randomUUID());
 
-        prepareAvailableProduct(storeId, productId, storeProduct);
-        when(productLocationRepository.findActiveByStoreIdAndProductId(storeId, productId))
+        prepareAvailableProduct(storeId, productId, storeProduct, mapId);
+        when(productLocationRepository.findActiveByStoreIdAndMapIdAndProductId(storeId, mapId, productId))
                 .thenReturn(List.of(location));
 
         assertThrows(
@@ -349,8 +380,8 @@ class ProductLocationServiceTest {
             }
         }
 
-        prepareAvailableProduct(storeId, productId, storeProduct);
-        when(productLocationRepository.findActiveByStoreIdAndProductId(storeId, productId))
+        prepareAvailableProduct(storeId, productId, storeProduct, mapId);
+        when(productLocationRepository.findActiveByStoreIdAndMapIdAndProductId(storeId, mapId, productId))
                 .thenReturn(List.of(location));
 
         assertThrows(
@@ -359,8 +390,14 @@ class ProductLocationServiceTest {
         );
     }
 
-    private void prepareAvailableProduct(UUID storeId, UUID productId, StoreProduct storeProduct) {
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+    private void prepareAvailableProduct(
+            UUID storeId,
+            UUID productId,
+            StoreProduct storeProduct,
+            UUID mapId
+    ) {
+        StoreMap activeMap = storeMap(storeId, mapId);
+        when(activeStoreMapResolver.resolve(storeId)).thenReturn(activeMap);
         when(storeProductRepository.findAvailableByStoreIdAndProductId(storeId, productId))
                 .thenReturn(Optional.of(storeProduct));
     }

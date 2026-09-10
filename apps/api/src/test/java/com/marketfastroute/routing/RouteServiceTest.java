@@ -6,6 +6,7 @@ import com.marketfastroute.map.MapNode;
 import com.marketfastroute.map.MapNodeRepository;
 import com.marketfastroute.map.MapNodeType;
 import com.marketfastroute.map.MapStatus;
+import com.marketfastroute.map.ActiveStoreMapResolver;
 import com.marketfastroute.map.PointOfInterest;
 import com.marketfastroute.map.PointOfInterestRepository;
 import com.marketfastroute.map.PointOfInterestType;
@@ -73,8 +74,7 @@ class RouteServiceTest {
     void setUp() {
         DijkstraPathFinder pathFinder = new DijkstraPathFinder();
         routeService = new RouteService(
-                storeRepository,
-                storeMapRepository,
+                new ActiveStoreMapResolver(storeRepository, storeMapRepository),
                 storeProductRepository,
                 productLocationRepository,
                 mapNodeRepository,
@@ -108,7 +108,7 @@ class RouteServiceTest {
         PointOfInterest entrancePoint = point(map, entrance);
         PointOfInterest checkoutPoint = point(map, checkout);
 
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeMapRepository.findActiveByStoreId(storeId)).thenReturn(Optional.of(map));
         when(mapNodeRepository.findByStoreMap_IdAndActiveTrueOrderById(mapId)).thenReturn(nodes);
         when(mapEdgeRepository.findByStoreMap_IdAndActiveTrueOrderById(mapId)).thenReturn(edges);
@@ -146,7 +146,7 @@ class RouteServiceTest {
     @Test
     void rejectsAStoreThatDoesNotExistBeforeLoadingRouteData() {
         UUID storeId = UUID.randomUUID();
-        when(storeRepository.existsById(storeId)).thenReturn(false);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(false);
 
         assertThrows(StoreNotFoundException.class,
                 () -> routeService.calculate(new RouteRequest(storeId, List.of(UUID.randomUUID()))));
@@ -160,7 +160,7 @@ class RouteServiceTest {
         UUID storeId = UUID.randomUUID();
         UUID mapId = UUID.randomUUID();
         StoreMap map = activeMap(store(storeId), mapId);
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeMapRepository.findActiveByStoreId(storeId)).thenReturn(Optional.of(map));
         when(mapNodeRepository.findByStoreMap_IdAndActiveTrueOrderById(mapId)).thenReturn(List.of());
         when(mapEdgeRepository.findByStoreMap_IdAndActiveTrueOrderById(mapId)).thenReturn(List.of());
@@ -181,7 +181,7 @@ class RouteServiceTest {
         UUID mapId = UUID.randomUUID();
         StoreMap map = activeMap(store(storeId), mapId);
         ProductWithAvailability product = product(storeId, "product", "Product");
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeMapRepository.findActiveByStoreId(storeId)).thenReturn(Optional.of(map));
         when(mapNodeRepository.findByStoreMap_IdAndActiveTrueOrderById(mapId)).thenReturn(List.of());
         when(mapEdgeRepository.findByStoreMap_IdAndActiveTrueOrderById(mapId)).thenReturn(List.of());
@@ -203,7 +203,7 @@ class RouteServiceTest {
         StoreMap otherMap = mock(StoreMap.class);
         when(otherMap.getId()).thenReturn(UUID.randomUUID());
         MapNode foreignNode = node("foreign", MapNodeType.PATH, otherMap, 0, 0);
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeMapRepository.findActiveByStoreId(storeId)).thenReturn(Optional.of(map));
         when(mapNodeRepository.findByStoreMap_IdAndActiveTrueOrderById(mapId)).thenReturn(List.of(foreignNode));
 

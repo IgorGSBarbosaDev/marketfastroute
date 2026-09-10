@@ -59,8 +59,7 @@ class MapServiceTest {
     @BeforeEach
     void setUp() {
         mapService = new MapService(
-                storeRepository,
-                storeMapRepository,
+                new ActiveStoreMapResolver(storeRepository, storeMapRepository),
                 sectorRepository,
                 aisleRepository,
                 shelfBlockRepository,
@@ -108,9 +107,9 @@ class MapServiceTest {
     }
 
     @Test
-    void rejectsAStoreThatDoesNotExist() {
+    void rejectsAnInactiveOrUnknownStoreBeforeLoadingTheMap() {
         UUID storeId = UUID.randomUUID();
-        when(storeRepository.existsById(storeId)).thenReturn(false);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(false);
 
         assertThrows(StoreNotFoundException.class, () -> mapService.findActiveByStore(storeId));
 
@@ -121,7 +120,7 @@ class MapServiceTest {
     @Test
     void rejectsAStoreWithoutAnActiveMap() {
         UUID storeId = UUID.randomUUID();
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeMapRepository.findActiveByStoreId(storeId)).thenReturn(Optional.empty());
 
         assertThrows(StoreMapNotFoundException.class, () -> mapService.findActiveByStore(storeId));
@@ -184,7 +183,7 @@ class MapServiceTest {
     }
 
     private void givenActiveMap(UUID storeId, StoreMap storeMap) {
-        when(storeRepository.existsById(storeId)).thenReturn(true);
+        when(storeRepository.existsByIdAndActiveTrue(storeId)).thenReturn(true);
         when(storeMapRepository.findActiveByStoreId(storeId))
                 .thenReturn(Optional.of(storeMap));
     }

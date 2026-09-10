@@ -4,11 +4,10 @@ import com.marketfastroute.map.MapConsistencyException;
 import com.marketfastroute.map.MapEdge;
 import com.marketfastroute.map.MapNode;
 import com.marketfastroute.map.MapNodeType;
+import com.marketfastroute.map.ActiveStoreMapResolver;
 import com.marketfastroute.map.PointOfInterest;
 import com.marketfastroute.map.PointOfInterestRepository;
 import com.marketfastroute.map.PointOfInterestType;
-import com.marketfastroute.map.MapStatus;
-import com.marketfastroute.map.StoreMapNotFoundException;
 import com.marketfastroute.map.MapEdgeRepository;
 import com.marketfastroute.map.MapNodeRepository;
 import com.marketfastroute.product.Product;
@@ -20,9 +19,6 @@ import com.marketfastroute.product.ProductLocationRepository;
 import com.marketfastroute.product.StoreProduct;
 import com.marketfastroute.product.StoreProductRepository;
 import com.marketfastroute.store.StoreMap;
-import com.marketfastroute.store.StoreMapRepository;
-import com.marketfastroute.store.StoreNotFoundException;
-import com.marketfastroute.store.StoreRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,8 +34,7 @@ import java.util.stream.IntStream;
 @Transactional(readOnly = true)
 public class RouteService {
 
-    private final StoreRepository storeRepository;
-    private final StoreMapRepository storeMapRepository;
+    private final ActiveStoreMapResolver activeStoreMapResolver;
     private final StoreProductRepository storeProductRepository;
     private final ProductLocationRepository productLocationRepository;
     private final MapNodeRepository mapNodeRepository;
@@ -49,8 +44,7 @@ public class RouteService {
     private final RouteComposer routeComposer;
 
     public RouteService(
-            StoreRepository storeRepository,
-            StoreMapRepository storeMapRepository,
+            ActiveStoreMapResolver activeStoreMapResolver,
             StoreProductRepository storeProductRepository,
             ProductLocationRepository productLocationRepository,
             MapNodeRepository mapNodeRepository,
@@ -59,8 +53,7 @@ public class RouteService {
             StopOptimizer stopOptimizer,
             RouteComposer routeComposer
     ) {
-        this.storeRepository = storeRepository;
-        this.storeMapRepository = storeMapRepository;
+        this.activeStoreMapResolver = activeStoreMapResolver;
         this.storeProductRepository = storeProductRepository;
         this.productLocationRepository = productLocationRepository;
         this.mapNodeRepository = mapNodeRepository;
@@ -75,8 +68,7 @@ public class RouteService {
         UUID storeId = request.storeId();
         List<UUID> productIds = request.productIds().stream().distinct().toList();
 
-        ensureStoreExists(storeId);
-        StoreMap storeMap = findActiveMap(storeId);
+        StoreMap storeMap = activeStoreMapResolver.resolve(storeId);
         UUID mapId = requireIdentifier(storeMap.getId(), "Active map has no identifier");
 
         NavigationGraph graph = loadGraph(mapId);
@@ -118,24 +110,6 @@ public class RouteService {
                 || request.productIds().stream().anyMatch(Objects::isNull)) {
             throw new InvalidRouteRequestException("storeId and at least one productId are required");
         }
-    }
-
-    private void ensureStoreExists(UUID storeId) {
-        if (!storeRepository.existsById(storeId)) {
-            throw new StoreNotFoundException(storeId);
-        }
-    }
-
-    private StoreMap findActiveMap(UUID storeId) {
-        StoreMap storeMap = storeMapRepository.findActiveByStoreId(storeId)
-                .orElseThrow(() -> new StoreMapNotFoundException(storeId));
-        if (storeMap.getStatus() != MapStatus.ACTIVE) {
-            throw new StoreMapNotFoundException(storeId);
-        }
-        if (storeMap.getStore() != null && !Objects.equals(storeMap.getStore().getId(), storeId)) {
-            throw new MapConsistencyException("Active map belongs to another store");
-        }
-        return storeMap;
     }
 
     private NavigationGraph loadGraph(UUID mapId) {
