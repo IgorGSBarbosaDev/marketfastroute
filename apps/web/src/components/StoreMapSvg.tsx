@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { fixtureColors, fixtureKind } from '@/lib/map-fixtures'
 import { LocateFixed, Minus, Plus, RotateCcw } from 'lucide-react'
 import type { PointerEvent, WheelEvent } from 'react'
 import type { CalculatedRoute, MapEdge, MapGeometry, MapNode, PointOfInterest, StoreMap } from '@/types/api'
@@ -38,7 +39,7 @@ export function StoreMapSvg({ map, route, onSelectElement, title = 'Mapa da loja
 
   function onWheel(event: WheelEvent<SVGSVGElement>) {
     event.preventDefault()
-    setZoom((current) => Math.min(3, Math.max(0.7, current * (event.deltaY < 0 ? 1.12 : 0.89))))
+    setZoom((current) => Math.min(6, Math.max(0.7, current * (event.deltaY < 0 ? 1.12 : 0.89))))
   }
 
   function onPointerDown(event: PointerEvent<SVGSVGElement>) {
@@ -50,9 +51,11 @@ export function StoreMapSvg({ map, route, onSelectElement, title = 'Mapa da loja
   function onPointerMove(event: PointerEvent<SVGSVGElement>) {
     if (!drag.current) return
     const bounds = event.currentTarget.getBoundingClientRect()
+    const pixelsPerUnit = Math.min(bounds.width / map.width, bounds.height / map.height)
+    if (pixelsPerUnit <= 0) return
     setPan({
-      x: drag.current.startX + (event.clientX - drag.current.x) * map.width / bounds.width,
-      y: drag.current.startY + (event.clientY - drag.current.y) * map.height / bounds.height,
+      x: drag.current.startX + (event.clientX - drag.current.x) / pixelsPerUnit,
+      y: drag.current.startY + (event.clientY - drag.current.y) / pixelsPerUnit,
     })
   }
 
@@ -68,11 +71,11 @@ export function StoreMapSvg({ map, route, onSelectElement, title = 'Mapa da loja
     const ys = points.map(({ y }) => Number(y))
     const routeWidth = Math.max(16, Math.max(...xs) - Math.min(...xs))
     const routeHeight = Math.max(16, Math.max(...ys) - Math.min(...ys))
-    const nextZoom = Math.min(3, Math.max(0.75, Math.min(map.width / (routeWidth * 1.4), map.height / (routeHeight * 1.4))))
+    const nextZoom = Math.min(6, Math.max(0.75, Math.min(map.width / (routeWidth * 1.4), map.height / (routeHeight * 1.4))))
     const routeCenterX = (Math.min(...xs) + Math.max(...xs)) / 2
     const routeCenterY = (Math.min(...ys) + Math.max(...ys)) / 2
     setZoom(nextZoom)
-    setPan({ x: (1 - nextZoom) * (centerX - routeCenterX), y: (1 - nextZoom) * (centerY - routeCenterY) })
+    setPan({ x: nextZoom * (centerX - routeCenterX), y: nextZoom * (centerY - routeCenterY) })
   }
 
   const centerX = map.width / 2
@@ -115,6 +118,7 @@ export function StoreMapSvg({ map, route, onSelectElement, title = 'Mapa da loja
             const isVertical = aisle.height > aisle.width
             return (
               <g key={aisle.id} transform={geometryTransform(aisle)} onClick={() => onSelectElement?.(aisle.id)}>
+                <title>{aisle.code} · {aisle.name}</title>
                 <rect className={`${aisle.id === selectedElementId ? 'map-element-selected ' : ''}${aisle.active === false ? 'map-element-inactive' : ''}`} x={aisle.x} y={aisle.y} width={aisle.width} height={aisle.height} rx="0.8" fill="#dcece2" stroke="#8eae9c" strokeWidth="0.48" />
                 {isVertical
                   ? <line x1={centerX} y1={aisle.y + 1} x2={centerX} y2={aisle.y + aisle.height - 1} stroke="#97b3a4" strokeWidth="0.32" strokeDasharray="1.3 1" />
@@ -124,6 +128,7 @@ export function StoreMapSvg({ map, route, onSelectElement, title = 'Mapa da loja
                   y={centerY}
                   transform={isVertical ? `rotate(-90 ${centerX} ${centerY})` : undefined}
                   className="map-aisle-label"
+                  style={{ fontSize: Math.min(1.65, Math.min(aisle.width, aisle.height) * 0.3) }}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   pointerEvents="none"
@@ -133,33 +138,53 @@ export function StoreMapSvg({ map, route, onSelectElement, title = 'Mapa da loja
           })}
           {visibleShelfBlocks.map((block) => {
             const isVertical = block.height > block.width
-            const sectionCount = Math.min(8, Math.max(2, Math.round(Math.max(block.width, block.height) / 5)))
+            const sectionCount = Math.min(24, Math.max(2, Math.round(Math.max(block.width, block.height) * map.scaleMetersPerUnit)))
+            const kind = fixtureKind(block, visibleSectors.find((sector) => sector.id === block.sectorId)?.name)
+            const colors = fixtureColors[kind]
+            const isShelf = ['gondola', 'wall', 'produce', 'bakery', 'chiller', 'freezer', 'butcher'].includes(kind)
             const centerX = block.x + block.width / 2
             const centerY = block.y + block.height / 2
             return (
               <g key={block.id} transform={geometryTransform(block)} onClick={() => onSelectElement?.(block.id)}>
-                <rect x={block.x + 0.7} y={block.y + 0.8} width={block.width} height={block.height} rx="0.5" fill="#334d56" opacity="0.18" />
+                <rect x={block.x + 0.25} y={block.y + 0.35} width={block.width} height={block.height} rx="0.5" fill="#334d56" opacity="0.18" />
                 <rect
                   className={`${block.id === selectedElementId ? 'map-element-selected ' : ''}${block.active === false ? 'map-element-inactive' : ''}`}
                   x={block.x} y={block.y} width={block.width} height={block.height} rx="0.5"
-                  fill="#647c83" stroke="#405b67" strokeWidth="0.35"
+                  fill={colors.fill} stroke={colors.edge} strokeWidth="0.25"
                 />
                 <line x1={block.x + 0.5} y1={block.y + 0.8} x2={block.x + block.width - 0.5} y2={block.y + 0.8} stroke="#dce4dd" strokeWidth="0.35" />
-                {Array.from({ length: sectionCount - 1 }, (_, index) => {
+                {isShelf && Array.from({ length: sectionCount - 1 }, (_, index) => {
                   const sectionPosition = (index + 1) / sectionCount
                   return isVertical
-                    ? <line key={index} x1={block.x + 0.6} y1={block.y + block.height * sectionPosition} x2={block.x + block.width - 0.6} y2={block.y + block.height * sectionPosition} stroke="#bdcbc5" strokeWidth="0.28" opacity="0.9" />
-                    : <line key={index} x1={block.x + block.width * sectionPosition} y1={block.y + 0.6} x2={block.x + block.width * sectionPosition} y2={block.y + block.height - 0.6} stroke="#bdcbc5" strokeWidth="0.28" opacity="0.9" />
+                    ? <line key={index} x1={block.x + 0.6} y1={block.y + block.height * sectionPosition} x2={block.x + block.width - 0.6} y2={block.y + block.height * sectionPosition} stroke={colors.detail} strokeWidth="0.22" opacity="0.9" />
+                    : <line key={index} x1={block.x + block.width * sectionPosition} y1={block.y + 0.6} x2={block.x + block.width * sectionPosition} y2={block.y + block.height - 0.6} stroke={colors.detail} strokeWidth="0.22" opacity="0.9" />
                 })}
-                <text
+                {kind === 'seating' && Array.from({ length: Math.max(1, Math.floor(Math.max(block.width, block.height) * map.scaleMetersPerUnit / 0.85)) }, (_, index) => {
+                  const seats = Math.max(1, Math.floor(Math.max(block.width, block.height) * map.scaleMetersPerUnit / 0.85))
+                  const step = Math.max(block.width, block.height) / seats
+                  return <rect key={index} x={isVertical ? block.x + 0.4 : block.x + index * step + 0.4}
+                    y={isVertical ? block.y + index * step + 0.4 : block.y + 0.4}
+                    width={isVertical ? block.width - 0.8 : step - 0.8}
+                    height={isVertical ? step - 0.8 : block.height - 0.8} rx="0.4" fill={colors.edge} />
+                })}
+                {kind === 'checkout' && <rect x={block.x + block.width * 0.15} y={block.y + block.height * 0.08}
+                  width={block.width * 0.7} height={block.height * 0.48} rx="0.3" fill="#304c50" />}
+                {kind === 'ticket' && <rect x={block.x + 0.6} y={block.y + 0.5}
+                  width={block.width - 1.2} height={block.height * 0.4} fill={colors.detail} />}
+                {(kind === 'gondola' || kind === 'wall') && <line
+                  x1={isVertical ? centerX : block.x + 0.3} y1={isVertical ? block.y + 0.3 : centerY}
+                  x2={isVertical ? centerX : block.x + block.width - 0.3} y2={isVertical ? block.y + block.height - 0.3 : centerY}
+                  stroke={colors.edge} strokeWidth="0.25" />}
+                {(zoom >= 1.6 || kind === 'checkout') && <text
                   x={centerX}
                   y={centerY}
                   transform={isVertical ? `rotate(-90 ${centerX} ${centerY})` : undefined}
                   className="map-shelf-label"
+                  style={{ fontSize: Math.min(1.5, Math.min(block.width, block.height) * 0.45) }}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   pointerEvents="none"
-                >{block.code}</text>
+                >{block.code}</text>}
                 <title>{block.code}{block.name ? ` · ${block.name}` : ''}</title>
               </g>
             )
@@ -168,8 +193,9 @@ export function StoreMapSvg({ map, route, onSelectElement, title = 'Mapa da loja
             <text
               key={`${sector.id}-label`}
               x={sector.x + 2}
-              y={sector.y + 5}
+              y={sector.y + 1.8}
               className="map-sector-label"
+              style={{ fontSize: Math.min(2.2, sector.width / Math.max(sector.name.length * 0.7, 1)) }}
               pointerEvents="none"
             >{sector.name}</text>
           ))}
@@ -189,7 +215,7 @@ export function StoreMapSvg({ map, route, onSelectElement, title = 'Mapa da loja
       </svg>
       <div className="map-controls" aria-label="Controles do mapa">
         {route && <button type="button" aria-label="Enquadrar percurso" onClick={focusRoute}><LocateFixed /></button>}
-        <button type="button" aria-label="Aumentar zoom" onClick={() => setZoom((value) => Math.min(3, value + 0.2))}><Plus /></button>
+        <button type="button" aria-label="Aumentar zoom" onClick={() => setZoom((value) => Math.min(6, value + 0.2))}><Plus /></button>
         <button type="button" aria-label="Diminuir zoom" onClick={() => setZoom((value) => Math.max(0.7, value - 0.2))}><Minus /></button>
         <button type="button" aria-label="Reenquadrar mapa" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }}><RotateCcw /></button>
       </div>

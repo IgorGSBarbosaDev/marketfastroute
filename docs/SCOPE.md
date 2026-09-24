@@ -166,6 +166,11 @@ disponível como outra visualização dos mesmos dados. Modelagem fotorrealista 
 visualização baseada em Unity/Unreal continuam fora do escopo. A decisão está
 registrada em `docs/ADR-004-operational-3d-map.md`.
 
+O cenário demonstrativo inclui mobiliário de supermercado: expositores murais,
+refrigeradores, açougue, cadeiras, caixas paralelos e portais compactos. O painel
+de senhas do açougue é uma representação estática identificada como demonstração;
+não emite tickets nem gerencia filas ou atendimentos.
+
 ---
 
 ## Accounts

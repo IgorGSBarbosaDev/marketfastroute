@@ -65,13 +65,21 @@ estados.
   ligados aos contratos administrativos existentes. O relatório do servidor
   apresenta pendências antes da ativação. A navegação administrativa quebra
   em duas linhas no celular para manter os cinco destinos visíveis.
-- **Mapa demonstrativo 2D:** a seed do Mercado Aurora tem sete setores, 14
-  corredores de produto, três travessas de circulação e 21 gôndolas identificadas.
+- **Mapa demonstrativo 2D:** a seed v5 do Mercado Aurora tem 16 setores e 60
+  trechos de produto com orientações e comprimentos variados. Cinco travessas e
+  quatro ligações principais articulam o mapa, com 80 expositores e peças de
+  mobiliário. As gôndolas centrais têm 1 m de largura.
+  O catálogo fictício inclui 240 produtos distribuídos por corredor.
   O SVG marca o piso transitável, mantém os nomes dos setores acima das formas e
   lê as geometrias e o grafo da API.
 - **Mercado 3D:** cena estilizada gerada a partir do mapa ativo da loja,
   carregada sob demanda. Blocos de prateleira mostram produtos procedurais;
-  pontos de parada exibem produto e ordem. O mapa de demonstração Mercado
+  pontos de parada exibem produto e ordem. Murais, refrigeradores, freezers,
+  padaria e ilhas baixas têm formas próprias; códigos dos móveis aparecem no
+  SVG com zoom e o canvas móvel tem altura suficiente para explorá-los. O açougue
+  tem paredes, vitrines, bancada, oito cadeiras e painel de senhas explicitamente
+  ilustrativo. Sete caixas paralelos, portais compactos de entrada e saída e uma
+  estação de carrinhos completam a área frontal. O mapa de demonstração Mercado
   Aurora usa dados fictícios e deixa o caminho livre entre as gôndolas.
 
 ## Movimento e acessibilidade

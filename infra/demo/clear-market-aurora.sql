@@ -3,31 +3,8 @@ BEGIN;
 DO $$
 DECLARE
     demo_store_id UUID := md5('marketfastroute.demo.store')::uuid;
-    demo_product_ids UUID[] := ARRAY[
-        md5('marketfastroute.demo.product.MFR-DEMO-BANANA')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-MACA')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-PAO')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-BOLO')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-AGUA')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-SUCO')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-LEITE')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-QUEIJO')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-ERVILHA')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-SORVETE')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-ARROZ')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-FEIJAO')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-DETERGENTE')::uuid,
-        md5('marketfastroute.demo.product.MFR-DEMO-SABAO')::uuid
-    ];
-    demo_category_ids UUID[] := ARRAY[
-        md5('marketfastroute.demo.category.MFR-DEMO-HORTIFRUTI')::uuid,
-        md5('marketfastroute.demo.category.MFR-DEMO-PADARIA')::uuid,
-        md5('marketfastroute.demo.category.MFR-DEMO-BEBIDAS')::uuid,
-        md5('marketfastroute.demo.category.MFR-DEMO-LATICINIOS')::uuid,
-        md5('marketfastroute.demo.category.MFR-DEMO-MERCEARIA')::uuid,
-        md5('marketfastroute.demo.category.MFR-DEMO-LIMPEZA')::uuid,
-        md5('marketfastroute.demo.category.MFR-DEMO-CONGELADOS')::uuid
-    ];
+    demo_product_ids UUID[] := ARRAY(SELECT id FROM product WHERE sku LIKE 'MFR-DEMO-%');
+    demo_category_ids UUID[] := ARRAY(SELECT id FROM category WHERE code LIKE 'MFR-DEMO-%');
 BEGIN
     IF EXISTS (
         SELECT 1
@@ -40,31 +17,16 @@ BEGIN
 
     IF EXISTS (
         SELECT 1 FROM product
-        WHERE sku LIKE 'MFR-DEMO-%' AND id <> ALL(demo_product_ids)
-    ) OR EXISTS (
-        SELECT 1 FROM product
-        WHERE id = ANY(demo_product_ids)
-          AND sku NOT IN (
-            'MFR-DEMO-BANANA', 'MFR-DEMO-MACA', 'MFR-DEMO-PAO', 'MFR-DEMO-BOLO',
-            'MFR-DEMO-AGUA', 'MFR-DEMO-SUCO', 'MFR-DEMO-LEITE', 'MFR-DEMO-QUEIJO',
-            'MFR-DEMO-ERVILHA', 'MFR-DEMO-SORVETE',
-            'MFR-DEMO-ARROZ', 'MFR-DEMO-FEIJAO', 'MFR-DEMO-DETERGENTE', 'MFR-DEMO-SABAO'
-          )
+        WHERE sku LIKE 'MFR-DEMO-%'
+          AND id <> md5('marketfastroute.demo.product.' || sku)::uuid
     ) THEN
         RAISE EXCEPTION 'Refusing to clear products outside the reserved demo namespace';
     END IF;
 
     IF EXISTS (
         SELECT 1 FROM category
-        WHERE code LIKE 'MFR-DEMO-%' AND id <> ALL(demo_category_ids)
-    ) OR EXISTS (
-        SELECT 1 FROM category
-        WHERE id = ANY(demo_category_ids)
-          AND code NOT IN (
-            'MFR-DEMO-HORTIFRUTI', 'MFR-DEMO-PADARIA', 'MFR-DEMO-BEBIDAS',
-            'MFR-DEMO-LATICINIOS', 'MFR-DEMO-MERCEARIA', 'MFR-DEMO-LIMPEZA',
-            'MFR-DEMO-CONGELADOS'
-          )
+        WHERE code LIKE 'MFR-DEMO-%'
+          AND id <> md5('marketfastroute.demo.category.' || code)::uuid
     ) THEN
         RAISE EXCEPTION 'Refusing to clear categories outside the reserved demo namespace';
     END IF;
@@ -108,47 +70,9 @@ WHERE code = 'MFR-DEMO-AURORA'
    OR id = md5('marketfastroute.demo.store')::uuid;
 
 DELETE FROM product
-WHERE sku LIKE 'MFR-DEMO-%'
-   OR id IN (
-       md5('marketfastroute.demo.product.MFR-DEMO-BANANA')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-MACA')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-PAO')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-BOLO')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-AGUA')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-SUCO')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-LEITE')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-QUEIJO')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-ERVILHA')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-SORVETE')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-ARROZ')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-FEIJAO')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-DETERGENTE')::uuid,
-       md5('marketfastroute.demo.product.MFR-DEMO-SABAO')::uuid
-   );
-
-UPDATE category
-SET parent_id = NULL
-WHERE code LIKE 'MFR-DEMO-%'
-   OR id IN (
-       md5('marketfastroute.demo.category.MFR-DEMO-HORTIFRUTI')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-PADARIA')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-BEBIDAS')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-LATICINIOS')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-MERCEARIA')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-LIMPEZA')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-CONGELADOS')::uuid
-   );
+WHERE sku LIKE 'MFR-DEMO-%';
 
 DELETE FROM category
-WHERE code LIKE 'MFR-DEMO-%'
-   OR id IN (
-       md5('marketfastroute.demo.category.MFR-DEMO-HORTIFRUTI')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-PADARIA')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-BEBIDAS')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-LATICINIOS')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-MERCEARIA')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-LIMPEZA')::uuid,
-       md5('marketfastroute.demo.category.MFR-DEMO-CONGELADOS')::uuid
-   );
+WHERE code LIKE 'MFR-DEMO-%';
 
 COMMIT;

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import WebGL from 'three/addons/capabilities/WebGL.js'
+import { fixtureKind } from '@/lib/map-fixtures'
+import { buildMarketFurniture } from '@/lib/market-furniture'
 import { LocateFixed, Minus, Plus, RotateCcw } from 'lucide-react'
 import type { CalculatedRoute, ProductLocation, StoreMap } from '@/types/api'
 
@@ -23,8 +25,9 @@ const paletteBySector: Record<string, { floor: string; products: string }> = {
 }
 
 const packageColors = ['#d88956', '#6f9c72', '#d5b84f', '#6992a0', '#bd6a57', '#8c7eaa']
+const emptyLocations: NonNullable<MarketSceneProps['locations']> = []
 
-export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }: MarketSceneProps) {
+export function MarketScene({ map, route = null, locations = emptyLocations, onSwitchTo2D }: MarketSceneProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
@@ -33,6 +36,8 @@ export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }:
   useEffect(() => {
     if (!map) return
     if (!WebGL.isWebGL2Available()) {
+      // WebGL initialization is an external system; expose its synchronous failure to React.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSceneError('Este navegador não conseguiu iniciar WebGL 2.')
       return
     }
@@ -58,7 +63,7 @@ export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }:
     const scene = new THREE.Scene()
     scene.background = new THREE.Color('#e9e7dc')
 
-    const worldScale = Math.max(map.scaleMetersPerUnit, 0.1)
+    const worldScale = map.scaleMetersPerUnit
     const worldWidth = map.width * worldScale
     const worldDepth = map.height * worldScale
     const maxDimension = Math.max(worldWidth, worldDepth)
@@ -239,7 +244,8 @@ export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }:
       const width = sector.width * worldScale
       const depth = sector.height * worldScale
       addBox(width, 0.025, depth, [mapX(sector.x + sector.width / 2), -0.055, mapZ(sector.y + sector.height / 2)], tone.floor, world, sector.rotation)
-      addTextSign(sector.name, 'SETOR DA LOJA', tone.products, mapX(sector.x + sector.width / 2), 2.25, mapZ(sector.y + sector.height / 2), Math.min(Math.max(2.6, width * 0.7), 7.5))
+      const hasServiceSign = activeShelfBlocks.some((block) => block.sectorId === sector.id && fixtureKind(block) === 'service-wall')
+      if (!hasServiceSign) addTextSign(sector.name, '', tone.products, mapX(sector.x + sector.width / 2), 2.65, mapZ(sector.y), Math.min(Math.max(2.6, width * 0.65), 6.2))
     })
 
     activeAisles.forEach((aisle) => {
@@ -249,8 +255,7 @@ export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }:
       const z = mapZ(aisle.y + aisle.height / 2)
       addBox(width, 0.028, depth, [x, -0.025, z], '#d7d4c9', world, aisle.rotation)
       const sector = aisle.sectorId ? sectorById.get(aisle.sectorId) : undefined
-      const subtitle = sector?.name ?? 'ÁREA DE COMPRAS'
-      addTextSign(aisle.code + '  ·  ' + aisle.name, subtitle, '#365a67', x, 2.15, z, Math.min(Math.max(2.5, width * 1.25), 6.6))
+      if (sector) addTextSign(aisle.code, '', '#365a67', x, 0.12, z, 1.15)
     })
 
     const productGeometry = {
@@ -277,7 +282,7 @@ export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }:
         context.fillRect(0, 77, 256, 122)
         context.fillStyle = '#2d4c58'
         context.font = '700 23px Arial, sans-serif'
-        context.fillText('MERCADO AURORA', 18, 112)
+        context.fillText('ILUSTRATIVO', 18, 112)
         context.fillStyle = '#61726d'
         context.font = '600 18px Arial, sans-serif'
         context.fillText((productName || sectorName).toLocaleUpperCase('pt-BR').slice(0, 22), 18, 151)
@@ -320,60 +325,118 @@ export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }:
     }
 
     function addShelfBlock(block: StoreMap['shelfBlocks'][number]) {
-      const width = Math.max(0.48, block.width * worldScale)
-      const depth = Math.max(0.48, block.height * worldScale)
+      // Work along the long axis so horizontal wall fixtures have the same detail density.
+      const horizontal = block.width > block.height
+      const width = Math.min(block.width, block.height) * worldScale
+      const depth = Math.max(block.width, block.height) * worldScale
       const group = new THREE.Group()
       group.position.set(mapX(block.x + block.width / 2), 0, mapZ(block.y + block.height / 2))
-      group.rotation.y = -THREE.MathUtils.degToRad(block.rotation)
+      group.rotation.y = -THREE.MathUtils.degToRad(block.rotation) - (horizontal ? Math.PI / 2 : 0)
       world.add(group)
-
       const sector = block.sectorId ? sectorById.get(block.sectorId) : undefined
       const sectorName = sector?.name ?? 'Mercearia'
-      const shelfCode = block.code.toUpperCase()
-      const isFresh = /horti|fruta|produce/i.test(sectorName + ' ' + shelfCode)
-      const isBakery = /padaria|panific/i.test(sectorName)
-      const isCold = /latic|congel|frios/i.test(sectorName)
-      const steel = isCold ? '#829da2' : '#526c70'
-      const shelf = isCold ? '#d5e0df' : '#b8c0b5'
-      const shelfHeight = isFresh ? 1.2 : isCold ? 1.68 : 1.55
-      addBox(width + 0.12, 0.07, depth + 0.14, [0, 0.04, 0], '#64756f', group)
-      const postPositions = [-depth * 0.47, 0, depth * 0.47]
-      postPositions.forEach((z) => {
-        addBox(0.055, shelfHeight, 0.055, [-width * 0.44, shelfHeight / 2, z], steel, group, 0, 0.6)
-        addBox(0.055, shelfHeight, 0.055, [width * 0.44, shelfHeight / 2, z], steel, group, 0, 0.6)
-      })
-      const shelfLevels = isFresh ? [0.3, 0.55, 0.8, 1.05] : isCold ? [0.3, 0.66, 1.02, 1.38] : [0.28, 0.62, 0.96, 1.3]
+      const kind = fixtureKind(block, sectorName)
+      const isFresh = kind === 'produce'
+      const isBakery = kind === 'bakery'
+      const isCold = kind === 'chiller' || kind === 'freezer'
+      const isWall = kind === 'wall' || isCold || kind === 'service-wall' || block.name?.startsWith('Padaria mural')
+      if (isWall && !horizontal && block.x * worldScale > worldWidth * 0.8) group.rotation.y += Math.PI
+      if (buildMarketFurniture({
+        kind, name: block.name ?? block.code, width, depth, group, material, geometry,
+        box: (w, h, d, x, y, z, color) => addBox(w, h, d, [x, y, z], color, group),
+        label: (title, subtitle, y, signWidth) => addTextSign(title, subtitle, '#365a67', group.position.x, y, group.position.z, signWidth),
+        panel: (title, subtitle, position, panelWidth, panelHeight) => {
+          const canvas = document.createElement('canvas')
+          canvas.width = 640
+          canvas.height = 180
+          const context = canvas.getContext('2d')
+          if (!context) return
+          context.fillStyle = '#243c42'
+          context.fillRect(0, 0, 640, 180)
+          context.fillStyle = '#edcc73'
+          context.font = '700 72px monospace'
+          context.fillText(title, 24, 90, 590)
+          context.fillStyle = '#e4eee2'
+          context.font = '600 25px Arial, sans-serif'
+          context.fillText(subtitle, 24, 145, 590)
+          const displayMaterial = new THREE.MeshBasicMaterial({ map: canvasTexture(canvas) })
+          resources.materials.add(displayMaterial)
+          const display = new THREE.Mesh(geometry('service-display', () => new THREE.PlaneGeometry(1, 1)), displayMaterial)
+          display.position.set(...position)
+          display.rotation.y = Math.PI / 2
+          display.scale.set(panelWidth, panelHeight, 1)
+          group.add(display)
+        },
+      })) return
+      const shelfHeight = isFresh ? 0.85 : isBakery ? 1.2 : isCold ? 2.05 : 1.7
+      const shelfLevels = isFresh ? [0.68] : isBakery ? [0.3, 0.7, 1.08] : [0.25, 0.65, 1.05, 1.45]
+      const frameColor = isBakery || isFresh ? '#987448' : isCold ? '#526d78' : '#596e72'
+      const shelfColor = isBakery || isFresh ? '#cfad78' : '#d4dbd5'
+      addBox(width, 0.14, depth, [0, 0.07, 0], frameColor, group)
+      if (!isFresh) {
+        // Central spine gives standard gondolas two usable faces; murals have a rear panel.
+        addBox(Math.min(width * 0.08, 0.055), shelfHeight, depth,
+          [isWall ? -width * 0.45 : 0, shelfHeight / 2, 0], frameColor, group)
+        for (const z of [-depth / 2 + 0.025, depth / 2 - 0.025]) {
+          addBox(width, shelfHeight, 0.045, [0, shelfHeight / 2, z], frameColor, group)
+        }
+      }
       shelfLevels.forEach((height) => {
-        addBox(width, 0.045, depth, [0, height, 0], shelf, group, 0, 0.7)
-        addBox(width, 0.035, 0.04, [0, height + 0.04, depth * 0.49], '#e7e3d7', group)
+        addBox(width, 0.04, depth, [0, height, 0], shelfColor, group)
+        for (const side of isWall ? [1] : [-1, 1]) {
+          addBox(0.035, 0.065, depth, [side * (width / 2 - 0.02), height + 0.025, 0], '#eee8da', group)
+        }
       })
-
+      const bays = Math.max(1, Math.min(16, Math.round(depth / 1)))
+      for (let bay = 0; bay <= bays; bay += 1) {
+        const z = -depth / 2 + 0.02 + bay * (depth - 0.04) / bays
+        if (isFresh) {
+          addBox(width * 0.96, 0.18, 0.03, [0, 0.78, z], frameColor, group)
+        } else {
+          addBox(0.04, shelfHeight, 0.04, [isWall ? -width * 0.43 : 0, shelfHeight / 2, z], frameColor, group)
+        }
+      }
+      if (isCold) {
+        addBox(width, 0.18, depth, [0, shelfHeight, 0], '#385b6b', group)
+        // Inset glazed doors, frames, handles and cool light rails stay inside the API footprint.
+        const glass = new THREE.MeshStandardMaterial({ color: '#b4e0e5', transparent: true,
+          opacity: 0.18, roughness: 0.18, metalness: 0.15, depthWrite: false })
+        resources.materials.add(glass)
+        for (let bay = 0; bay < bays; bay += 1) {
+          const z = -depth / 2 + (bay + 0.5) * depth / bays
+          const door = addBox(0.015, 1.66, depth / bays - 0.07, [width * 0.48, 1.03, z], '#b4e0e5', group)
+          door.material = glass
+          door.castShadow = false
+          addBox(0.025, 1.7, 0.035, [width * 0.48, 1.03, z - depth / bays / 2 + 0.025], '#e8f4ed', group)
+          addBox(0.04, 0.32, 0.035, [width * 0.49, 1.05, z + depth / bays * 0.32], '#324e59', group)
+        }
+      }
       const shelfProducts = locations.filter((location) => location.shelfBlock === block.code || location.shelfBlock === block.name)
       const productName = shelfProducts.map((location) => location.productName).filter(Boolean).join(' / ')
+        || block.name?.split(' · ')[1] || sectorName
       const displayMaterial = packageMaterial(block.sectorId, sectorName, productName)
-      const countAlongShelf = Math.max(4, Math.min(18, Math.floor(depth / 0.42)))
-      const cartons: Array<{ position: THREE.Vector3; scale: THREE.Vector3; color: string }> = []
-      const bottles: Array<{ position: THREE.Vector3; scale: THREE.Vector3; color: string }> = []
-      const cans: Array<{ position: THREE.Vector3; scale: THREE.Vector3; color: string }> = []
-      const fruit: Array<{ position: THREE.Vector3; scale: THREE.Vector3; color: string }> = []
+      const countAlongShelf = Math.max(1, Math.min(24, Math.floor(depth / 0.3)))
+      type PackageTransform = { position: THREE.Vector3; scale: THREE.Vector3; color: string }
+      const cartons: PackageTransform[] = []
+      const bottles: PackageTransform[] = []
+      const cans: PackageTransform[] = []
+      const fruit: PackageTransform[] = []
+      const packageWidth = Math.min(0.2, width * 0.28)
       shelfLevels.forEach((height, level) => {
-        for (let index = 0; index < countAlongShelf; index += 1) {
-          const z = -depth * 0.43 + (index + 0.5) * (depth * 0.86 / countAlongShelf)
-          const x = ((index + level) % 3 - 1) * Math.min(width * 0.23, 0.14)
-          const hue = packageColors[(index + level * 2 + block.code.length) % packageColors.length]
-          if (isFresh) {
-            fruit.push({ position: new THREE.Vector3(x, height + 0.14, z), scale: new THREE.Vector3(0.14, 0.16, 0.14), color: packageColors[(index + level) % packageColors.length] })
-          } else if (isBakery) {
-            cartons.push({ position: new THREE.Vector3(x, height + 0.12, z), scale: new THREE.Vector3(0.18, 0.21, 0.18), color: index % 2 ? '#d9a455' : '#a96b3c' })
-          } else if (isCold) {
-            if (index % 3 === 0) bottles.push({ position: new THREE.Vector3(x, height + 0.14, z), scale: new THREE.Vector3(0.12, 0.28, 0.12), color: hue })
-            else cartons.push({ position: new THREE.Vector3(x, height + 0.12, z), scale: new THREE.Vector3(0.16, 0.22, 0.14), color: hue })
-          } else if (index % 4 === 0) {
-            bottles.push({ position: new THREE.Vector3(x, height + 0.16, z), scale: new THREE.Vector3(0.13, 0.31, 0.13), color: hue })
-          } else if (index % 3 === 0) {
-            cans.push({ position: new THREE.Vector3(x, height + 0.1, z), scale: new THREE.Vector3(0.12, 0.18, 0.12), color: hue })
-          } else {
-            cartons.push({ position: new THREE.Vector3(x, height + 0.12, z), scale: new THREE.Vector3(0.18, 0.22, 0.16), color: hue })
+        for (const side of isWall ? [1] : [-1, 1]) {
+          for (let index = 0; index < countAlongShelf; index += 1) {
+            const z = -depth * 0.46 + (index + 0.5) * depth * 0.92 / countAlongShelf
+            const x = side * width * (isWall ? 0.1 : 0.28)
+            const hue = packageColors[(Math.floor(index / 3) + level + block.code.charCodeAt(0)) % packageColors.length]
+            const position = new THREE.Vector3(x, height + (isFresh ? 0.12 : 0.17), z)
+            const scale = new THREE.Vector3(packageWidth, isFresh ? 0.2 : 0.28, Math.min(0.2, depth / countAlongShelf * 0.7))
+            const item = { position, scale, color: isBakery ? '#d6a157' : hue }
+            if (isFresh) {
+              item.color = ['#8ea44d', '#d9b34d', '#bc614c', '#789450'][Math.floor(index / 4) % 4]
+              fruit.push(item)
+            } else if (/bebidas|limpeza|cuidados|latic/i.test(sectorName)) bottles.push(item)
+            else if (/conservas/i.test(sectorName)) cans.push(item)
+            else cartons.push(item)
           }
         }
       })
@@ -385,9 +448,14 @@ export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }:
 
     activeShelfBlocks.forEach(addShelfBlock)
 
+    const fixtureKinds = new Set(activeShelfBlocks.map((block) => fixtureKind(block)))
     activePointsOfInterest.forEach((point) => {
       const x = mapX(point.x)
       const z = mapZ(point.y)
+      if ((point.type === 'CHECKOUT' && fixtureKinds.has('checkout'))
+        || (point.type === 'ENTRANCE' && fixtureKinds.has('entrance'))
+        || (point.type === 'EXIT' && fixtureKinds.has('exit'))
+        || (point.type === 'CART' && fixtureKinds.has('carts'))) return
       if (point.type === 'ENTRANCE' || point.type === 'EXIT') {
         const doorZ = point.y < map.height * 0.28
           ? -worldDepth / 2 + wallThickness / 2
@@ -435,8 +503,8 @@ export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }:
       context.fillStyle = accent
       context.fillRect(10, 10, 14, 112)
       context.fillStyle = '#284756'
-      context.font = '700 35px Arial, sans-serif'
-      context.fillText(title.slice(0, 25), 38, 58)
+      context.font = `700 ${Math.min(42, 780 / Math.max(title.length, 1))}px Arial, sans-serif`
+      context.fillText(title, 38, subtitle ? 58 : 82, 442)
       context.fillStyle = '#63736f'
       context.font = '600 20px Arial, sans-serif'
       context.fillText(subtitle.slice(0, 33), 38, 94)
@@ -555,7 +623,7 @@ export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }:
     controls.dampingFactor = 0.075
     controls.minPolarAngle = 0.12
     controls.maxPolarAngle = Math.PI / 2.02
-    controls.minDistance = maxDimension * 0.25
+    controls.minDistance = maxDimension * 0.08
     controls.maxDistance = maxDimension * 8
     controls.target.set(0, 0, 0)
     controls.update()
@@ -616,6 +684,7 @@ export function MarketScene({ map, route = null, locations = [], onSwitchTo2D }:
       scene.traverse((object) => {
         const mesh = object as THREE.Mesh
         if (mesh.isMesh && mesh.castShadow) mesh.castShadow = false
+        if (object instanceof THREE.InstancedMesh) object.dispose()
       })
       resources.geometries.forEach((entry) => entry.dispose())
       resources.materials.forEach((entry) => entry.dispose())

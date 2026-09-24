@@ -33,7 +33,7 @@ Stack oficial:
 - Docker Compose para ambiente local
 
 Tecnologias fora desta lista não devem ser adicionadas sem decisão explícita e
-documentada. Three.js é a exceção aprovada e delimitada em ADR-003.
+documentada. Three.js é a exceção aprovada em ADR-003 e ampliada em ADR-004.
 
 ---
 
@@ -181,9 +181,11 @@ Possíveis evoluções:
 
 Mudanças devem ocorrer apenas quando SVG deixar de atender aos requisitos de performance ou experiência.
 
-A única exceção WebGL do MVP é a cena demonstrativa fictícia em Three.js,
-descrita em ADR-003. Ela fica separada do mapa operacional, é carregada sob
-demanda e possui alternativa estática quando WebGL não está disponível.
+A visualização WebGL em Three.js usa o mesmo mapa ativo e a mesma rota da
+planta 2D, conforme ADR-004, que amplia a cena demonstrativa de ADR-003.
+Ela é carregada sob demanda e mantém a planta SVG como alternativa quando
+WebGL não está disponível. Mobiliário e produtos ilustrativos não alteram
+as regras de navegação calculadas no backend.
 
 ---
 

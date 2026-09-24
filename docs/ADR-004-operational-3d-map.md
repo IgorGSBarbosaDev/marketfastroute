@@ -26,10 +26,16 @@ to retain the existing 2D map as an alternate view.
 - Keep Three.js behind a dynamic import. Support orbit, pan, zoom, route
   framing and reset controls. If WebGL is unavailable or interrupted, offer the
   SVG/2D view.
-- Model the seeded Mercado Aurora as a fictional medium supermarket with
-  entrance-side produce and bakery, central grocery, perimeter dairy and frozen
-  sections, fourteen 2.5 m product aisles, three cross-aisles and clear shelf
-  setbacks.
+- Model the seeded Mercado Aurora as a fictional large supermarket with
+  entrance-side produce and bakery, central grocery and perimeter refrigeration.
+  Version 5 has 16 departments and 60 product aisles/accesses of varying lengths
+  and orientations, staggered produce islands, wall bakery, refrigerated murals,
+  and a dedicated butcher counter area. There are 80 fixtures and 240 synthetic
+  products; central gondolas remain 1 m wide. Seven parallel checkout fixtures,
+  compact entry/exit portals and butcher waiting chairs are part of the shared
+  map geometry. A fixed ticket display is illustrative only, with no live queue,
+  ticket issuance or checkout selection. Details are in DEMO-DATA.md and
+  DEMO-ASSORTMENT.md.
 - Keep fixtures and packaging stylized and procedural. The 3D view is
   illustrative and is not a photorealistic digital twin.
 - Do not change backend route calculation or persistence contracts.
@@ -42,7 +48,7 @@ to retain the existing 2D map as an alternate view.
 - Misplaced navigation nodes in any published store map can still produce a
   route in the wrong physical place; the map editor must keep graph nodes in
   walkable corridors. The fictional demo fixture now follows that rule.
-- The Mercado Aurora seed can refresh only while its version 3 map is a draft.
+- The Mercado Aurora seed can refresh only while its version 5 map is a draft.
   It refuses to rewrite a published map.
 - Three.js adds work to the browser while the 3D map is visible, so geometry
   and pixel ratio remain bounded and the 2D map stays available.
