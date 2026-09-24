@@ -8,23 +8,13 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-marketfastroute}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marketfastroute}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - supermarket-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 10
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
       retries: 10
 
   api:
@@ -37,21 +27,17 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-supermarket}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-marketfastroute}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-marketfastroute}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
       SPRING_FLYWAY_ENABLED: "true"
       POSTGRES_USER: ${POSTGRES_USER:-marketfastroute}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marketfastroute}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
     ports:
-      - "${API_PORT:-8080}:8080"
+      - "${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-8080}:8080"
     volumes:
       - ../apps/api:/workspace/apps/api
       - maven-repository:/root/.m2
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/actuator/health || exit 1"]
@@ -59,6 +45,38 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+
+  demo-seed:
+    image: postgres:16-alpine
+    profiles: ["demo"]
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-supermarket}
+      PGUSER: ${POSTGRES_USER:-marketfastroute}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-marketfastroute}
+    volumes:
+      - ./demo/seed-market-aurora.sql:/seed.sql:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    entrypoint: ["psql"]
+    command: ["--no-psqlrc", "--set=ON_ERROR_STOP=1", "--file=/seed.sql"]
+
+  demo-clear:
+    image: postgres:16-alpine
+    profiles: ["demo"]
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-supermarket}
+      PGUSER: ${POSTGRES_USER:-marketfastroute}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-marketfastroute}
+    volumes:
+      - ./demo/clear-market-aurora.sql:/clear.sql:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    entrypoint: ["psql"]
+    command: ["--no-psqlrc", "--set=ON_ERROR_STOP=1", "--file=/clear.sql"]
 
   web:
     build:
@@ -68,9 +86,10 @@ services:
     environment:
       VITE_API_URL: ${VITE_API_URL:-/api}
       VITE_API_PROXY_TARGET: http://api:8080
+      VITE_DEV_BIND_ADDRESS: 0.0.0.0
       CHOKIDAR_USEPOLLING: "true"
     ports:
-      - "${WEB_PORT:-5173}:5173"
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-5173}:5173"
     depends_on:
       api:
         condition: service_healthy

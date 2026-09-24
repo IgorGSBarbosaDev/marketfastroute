@@ -7,8 +7,10 @@
     "web:build": "pnpm --filter @marketfastroute/web build",
     "web:test": "pnpm --filter @marketfastroute/web test",
     "web:lint": "pnpm --filter @marketfastroute/web lint",
-    "compose:config": "docker compose -f infra/compose.yaml config",
-    "compose:up": "docker compose -f infra/compose.yaml up --build",
-    "compose:down": "docker compose -f infra/compose.yaml down"
+    "compose:config": "docker compose --env-file .env -f infra/compose.yaml config",
+    "compose:up": "docker compose --env-file .env -f infra/compose.yaml up --build",
+    "compose:down": "docker compose --env-file .env -f infra/compose.yaml down",
+    "demo:seed": "docker compose --env-file .env -f infra/compose.yaml --profile demo run --rm demo-seed",
+    "demo:clear": "docker compose --env-file .env -f infra/compose.yaml --profile demo run --rm demo-clear"
   }
 }
