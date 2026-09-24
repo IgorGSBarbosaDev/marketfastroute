@@ -17,6 +17,12 @@ target/
 .idea/workspace.xml
 .vscode/
 
+# Impeccable draft state; keep the approved mock and its alternatives tracked.
+.impeccable/questions/*.log
+.impeccable/questions/*.state.json
+.impeccable/questions/direction.json
+.impeccable/sketches/
+
 # OS files
 .DS_Store
 Thumbs.db

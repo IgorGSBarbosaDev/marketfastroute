@@ -1,0 +1,46 @@
+{
+  "title": "Escolha a composição da tela de compras",
+  "question": "A identidade Atlas interativo da loja está definida. Qual das três composições deve guiar a implementação da interface? As palavras e números dentro das imagens são apenas conteúdo visual gerado para comparar layouts; os dados reais virão da API.",
+  "options": [
+    {
+      "id": "atlas-map-primary",
+      "label": "Mapa em primeiro plano",
+      "kicker": "COMPOSIÇÃO 01",
+      "lineage": "Atlas ilustrado com mapa amplo e painel lateral de lista",
+      "thesis": "O mapa domina a área de trabalho; busca e itens ficam organizados em uma coluna lateral.",
+      "palette": ["#e5e3d8", "#28435e", "#75a98b", "#e8b655"],
+      "materials": ["papel cartográfico", "tinta azul", "ícones vetoriais"],
+      "viewport": "Planta central ampla, lista lateral e controles discretos de navegação.",
+      "risk": "A lista lateral precisa continuar utilizável em telas estreitas.",
+      "sketch": ".impeccable/mocks/01-atlas-mapa-em-primeiro-plano.png"
+    },
+    {
+      "id": "atlas-list-first",
+      "label": "Lista e busca em primeiro plano",
+      "kicker": "COMPOSIÇÃO 02",
+      "lineage": "Ferramenta de compras com coluna de tarefa e atlas explorável ao lado",
+      "thesis": "A busca e a lista mantêm a tarefa rápida; o mapa continua grande e sempre visível.",
+      "palette": ["#e5e3d8", "#28435e", "#75a98b", "#e8b655"],
+      "materials": ["papel cartográfico", "tinta azul", "ícones vetoriais"],
+      "viewport": "Coluna de produtos à esquerda, mapa à direita e resumo de rota flutuante.",
+      "risk": "No celular, a mudança entre lista e mapa precisa ser clara e preservar o contexto.",
+      "sketch": ".impeccable/mocks/02-atlas-com-lista-lateral.png"
+    },
+    {
+      "id": "atlas-route-band",
+      "label": "Rota como faixa de percurso",
+      "kicker": "COMPOSIÇÃO 03",
+      "lineage": "Planta de atlas acima de uma sequência de paradas de compra",
+      "thesis": "Mapa e sequência de percurso dividem a tela em duas áreas, conectando o desenho às paradas.",
+      "palette": ["#e5e3d8", "#28435e", "#75a98b", "#e8b655"],
+      "materials": ["papel cartográfico", "tinta azul", "ícones vetoriais"],
+      "viewport": "Mapa largo no topo, faixa de rota abaixo e lista de itens ao lado.",
+      "risk": "O arranjo horizontal pode reduzir a altura útil do mapa em notebooks menores.",
+      "sketch": ".impeccable/mocks/03-atlas-com-rota-horizontal.png"
+    }
+  ],
+  "steer": true,
+  "approved": "atlas-list-first",
+  "approvedLabel": "Lista e busca em primeiro plano",
+  "approvedAt": "2026-09-23"
+}

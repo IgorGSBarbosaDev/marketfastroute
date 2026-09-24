@@ -80,7 +80,13 @@ Duas unidades da mesma rede podem possuir:
 
 O mapa deve priorizar orientação e legibilidade.
 
-Não é objetivo do MVP criar um ambiente 3D realista.
+Não é objetivo do MVP criar um ambiente 3D realista para navegação.
+
+Uma cena demonstrativa de um supermercado fictício pode usar Three.js/WebGL
+para apresentar uma visão 3D ilustrativa. Ela deve ficar separada do mapa
+operacional: não representa os dados persistidos da loja, não calcula rotas e
+não substitui a navegação SVG. A decisão está registrada em
+`docs/ADR-003-threejs-demonstration.md`.
 
 ---
 

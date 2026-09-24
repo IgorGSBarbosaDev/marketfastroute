@@ -148,13 +148,20 @@ Os itens abaixo não devem ser implementados no MVP.
 
 ## Advanced Mapping
 
-- ambiente 3D realista;
-- modelagem 3D detalhada;
+- modelagem 3D realista ou detalhada do mapa operacional;
 - Unity;
 - Unreal Engine;
 - avatares;
 - realidade aumentada;
 - realidade virtual.
+
+### Exceção autorizada — demonstração fictícia
+
+O MVP inclui uma cena leve e ilustrativa de um mercado fictício em
+Three.js/WebGL. Ela é conteúdo demonstrativo independente: não é mapa de uma
+loja real, não usa dados da API, não recebe nem produz rotas e não substitui o
+mapa operacional em SVG. A dependência e seus limites estão registrados em
+`docs/ADR-003-threejs-demonstration.md`.
 
 ---
 
@@ -168,7 +175,11 @@ Não é requisito obrigatório do MVP:
 - listas salvas em nuvem;
 - programa de fidelidade.
 
-Autenticação administrativa pode existir conforme necessidade técnica.
+Para este MVP, por decisão do usuário, não há autenticação administrativa: o
+ambiente é somente para uso local ou em rede privada confiável. O Compose
+publica os serviços no loopback por padrão. Uma demonstração em LAN expõe o
+frontend e também suas rotas administrativas a qualquer pessoa que alcance a
+máquina; o projeto não deve ser publicado na internet.
 
 ---
 

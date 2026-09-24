@@ -12,6 +12,7 @@ Stack oficial:
 - React
 - Vite
 - shadcn/ui
+- Three.js somente para a cena demonstrativa fictícia, conforme ADR-003.
 
 ### Backend
 
@@ -24,14 +25,15 @@ Stack oficial:
 
 ### Cache / Ephemeral Data
 
-- Redis
+- Nenhum serviço de cache no MVP.
 
 ### Infrastructure
 
 - Docker
 - Docker Compose para ambiente local
 
-Tecnologias fora desta lista não devem ser adicionadas sem decisão explícita.
+Tecnologias fora desta lista não devem ser adicionadas sem decisão explícita e
+documentada. Three.js é a exceção aprovada e delimitada em ADR-003.
 
 ---
 
@@ -111,7 +113,6 @@ O frontend não deve:
 
 - implementar regra oficial de cálculo de rota;
 - acessar PostgreSQL diretamente;
-- acessar Redis diretamente;
 - conter lógica de domínio crítica duplicada do backend.
 
 ---
@@ -165,7 +166,7 @@ O mapa não deve ser forçado para dentro de abstrações do shadcn/ui.
 
 ## 4.2 Map Rendering
 
-Para o MVP, a preferência arquitetural é um mapa web vetorial/interativo.
+Para o mapa operacional, a preferência arquitetural é um mapa web vetorial/interativo.
 
 Abordagem inicial recomendada:
 
@@ -175,11 +176,13 @@ Possíveis evoluções:
 
 - Canvas;
 - PixiJS;
-- WebGL.
+- WebGL para o mapa operacional somente mediante decisão posterior.
 
 Mudanças devem ocorrer apenas quando SVG deixar de atender aos requisitos de performance ou experiência.
 
-Não utilizar engine 3D no MVP.
+A única exceção WebGL do MVP é a cena demonstrativa fictícia em Three.js,
+descrita em ADR-003. Ela fica separada do mapa operacional, é carregada sob
+demanda e possui alternativa estática quando WebGL não está disponível.
 
 ---
 
@@ -210,7 +213,6 @@ O backend é responsável por:
 - cálculo de rota;
 - persistência;
 - validações;
-- cache;
 - API.
 
 ---
@@ -302,15 +304,15 @@ Dados persistentes incluem:
 - conexões;
 - localização por loja.
 
-Redis não substitui PostgreSQL como fonte oficial desses dados.
+Redis não faz parte do MVP e não substitui PostgreSQL como fonte oficial dos dados.
 
 ---
 
-# 8. Redis
+# 8. Cache futuro
 
-Redis será utilizado apenas quando houver benefício claro.
+Cache somente será considerado quando houver evidência de necessidade.
 
-Possíveis usos:
+Possíveis usos futuros:
 
 - cache de mapa;
 - cache de catálogo;
@@ -321,9 +323,9 @@ Possíveis usos:
 
 Regra:
 
-> Toda informação que precise sobreviver à perda do Redis deve estar persistida em PostgreSQL.
+> Toda informação que precise sobreviver à perda de um cache deve estar persistida em PostgreSQL.
 
-Redis não deve ser introduzido em fluxos que não necessitem de cache ou dado efêmero.
+Não adicionar infraestrutura de cache ao MVP sem decisão baseada em medição.
 
 ---
 
@@ -428,13 +430,12 @@ Não acoplar toda a lógica em uma única classe ou endpoint.
 
 Todo ambiente de desenvolvimento deve ser reproduzível via Docker.
 
-Serviços esperados:
+Serviços do MVP:
 
 ```text
 web
 api
 postgres
-redis
 ```
 
 Para desenvolvimento, pode ser vantajoso executar frontend e backend localmente com apenas dependências em containers.
@@ -457,7 +458,6 @@ Serviços:
 
 ```text
 postgres
-redis
 api
 web
 ```
@@ -482,8 +482,6 @@ Exemplos:
 POSTGRES_DB
 POSTGRES_USER
 POSTGRES_PASSWORD
-REDIS_HOST
-REDIS_PORT
 API_PORT
 VITE_API_URL
 ```
@@ -496,7 +494,7 @@ Não armazenar secrets reais no repositório.
 
 Cache não deve ser tratado como requisito automático.
 
-Utilizar Redis quando medições ou requisitos justificarem.
+Adicionar Redis somente quando medições ou requisitos justificarem.
 
 Possíveis chaves:
 
@@ -578,11 +576,11 @@ Agentes devem seguir:
 3. Não adicionar Next.js.
 4. Não adicionar Node.js como backend.
 5. Não adicionar banco diferente de PostgreSQL.
-6. Não substituir Redis por outra solução sem decisão.
+6. Não adicionar cache ou serviço de armazenamento efêmero sem decisão.
 7. Não implementar recursos fora do MVP.
 8. Não adicionar localização indoor.
 9. Não adicionar QR Code.
-10. Não implementar mapa 3D real.
+10. Manter o mapa operacional vetorial; a cena Three.js fictícia não é fonte de navegação.
 11. Não duplicar regras de domínio no frontend.
 12. Não acessar banco pelo frontend.
 13. Não criar microserviços sem necessidade documentada.
@@ -595,7 +593,7 @@ Agentes devem seguir:
 
 A arquitetura inicial será:
 
-> Monorepo + frontend SPA + backend monólito modular + PostgreSQL + Redis.
+> Monorepo + frontend SPA + backend monólito modular + PostgreSQL.
 
 Não utilizar microserviços no MVP.
 
@@ -609,8 +607,6 @@ Spring Boot REST API
 Domain / Application Logic
     ↓
 PostgreSQL
-    ↓
-Redis quando aplicável
 ```
 
 ---

@@ -5,9 +5,9 @@
 Este documento consolida a modelagem relacional do PostgreSQL para o MVP do
 Indoor Supermarket Navigator.
 
-O PostgreSQL é a fonte persistente oficial. Redis não participa da modelagem
-de integridade e, quando utilizado, deverá servir apenas para cache ou dados
-efêmeros.
+O PostgreSQL é a fonte persistente oficial. Redis não faz parte do MVP. Uma
+decisão futura poderá avaliá-lo apenas para cache ou dados efêmeros, sem
+participar da integridade do domínio.
 
 Este documento não cria entidades JPA, repositories, services, controllers ou
 algoritmo de rotas. O esquema físico descrito aqui é implementado pelas
@@ -756,9 +756,9 @@ definidos e não são adicionados nesta etapa.
 10. Uma aresta não conecta um nó a ele mesmo e não duplica o mesmo par
     orientado dentro do mapa.
 11. Desativação lógica não remove registros nem altera seus relacionamentos.
-12. A integridade de ciclos de categorias, conectividade do grafo e validade
-    operacional do mapa deve ser verificada na camada de aplicação ou em uma
-    validação administrativa transacional.
+12. A integridade de ciclos de categorias é verificada na camada de aplicação.
+    Conectividade do grafo, limites geométricos e configuração dos pontos de
+    rota são verificados na validação administrativa antes da publicação.
 
 ## 8. Decisões de modelagem
 
@@ -856,9 +856,11 @@ Não foram adicionadas constraints para:
 - limitar profundidade de categorias;
 - selecionar o algoritmo de rota.
 
-Essas regras podem ser necessárias para a operação, mas não estão definidas no
-PRD, no SCOPE ou no pedido de modelagem. Devem ser decididas antes de serem
-transformadas em constraints ou validações.
+O banco mantém essas regras fora das constraints relacionais. A validação
+administrativa em `ADR-002` agora garante endpoints únicos, grafo conectado e
+limites geométricos antes da publicação. O MVP continua permitindo produtos
+sem localização; uma loja só pode publicar quando ao menos um produto ativo
+possui localização navegável.
 
 ## 10. Pontos `UNRESOLVED` fora do contrato relacional
 
@@ -872,19 +874,19 @@ colunas, constraints ou tabelas.
    global, global, global e por mapa. Origem, normalização, case sensitivity
    desejada pelo negócio e reutilização após desativação ainda são decisões da
    camada de aplicação.
-2. **Precisão e origem das coordenadas:** não foi definido se `x`/`y` começam no
-   canto superior esquerdo, se podem ser negativos, nem a precisão necessária.
-3. **Unidade de `rotation`:** graus, radianos e convenção de orientação não
-   foram especificados.
+2. **Precisão de coordenadas:** origem, eixos, unidade e rotação estão
+   definidos em `ADR-002`; a precisão operacional necessária além dos tipos
+   numéricos existentes ainda não foi medida.
+3. **Unidade de `rotation`:** resolvida em `ADR-002` como graus no sentido
+   horário, em torno do centro do retângulo.
 4. **Faixa de `shelf_level`:** não foi definido se o primeiro nível é `0` ou
    `1`, nem se níveis negativos são válidos.
-5. **Ciclo de publicação:** o modelo impede dois mapas ativos, mas não define
-   quem publica, arquiva ou reativa uma versão, nem se uma loja pode operar
-   temporariamente sem mapa ativo.
-6. **Entrada inicial e destino final:** o PRD exige um ponto inicial e uma área
-   de caixas, mas não define se haverá um único ponto padrão, vários pontos
-   selecionáveis ou atributos dedicados. `PointOfInterest` e `MapNode` suportam
-   os tipos necessários, mas a regra de seleção permanece indefinida.
+  5. **Ciclo de publicação:** `ADR-002` define transições unidirecionais
+     `DRAFT → ACTIVE → ARCHIVED`; uma versão arquivada é terminal. A loja ainda
+     pode ficar temporariamente sem mapa ativo durante a troca.
+6. **Entrada inicial e destino final:** resolvidos em `ADR-001` e `ADR-002`:
+   um ponto de interesse navegável ativo prevalece; sem ele, usa-se um único
+   nó ativo tipado. Ausência ou ambiguidade bloqueia publicação.
 7. **Localização sem coordenadas:** `x` e `y` em `product_location` são
    opcionais, porém o requisito não esclarece quando a posição deve ser
    derivada do bloco/prateleira ou quando o nó de navegação é suficiente.
