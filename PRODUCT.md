@@ -29,10 +29,10 @@ The product combines a store-specific indoor map, product locations, and backend
 
 - Customer scope: store selection; product search by name, category, SKU, or EAN when supplied; shopping-list add, remove, and quantity changes; route calculation; store-specific map, sectors, aisles, points of interest, product locations, zoom, and pan.
 - Administration scope: stores, categories, products, store availability, versioned maps, sectors, aisles, shelf blocks, points of interest, graph nodes and edges, and product locations. Existing logical activation and no-physical-delete behavior are retained.
-- The operational map remains an interactive SVG/pseudo-3D rendering of the active map returned by the API. Dijkstra calculates shortest graph segments; a deterministic nearest-neighbor heuristic orders multiple stops.
-- A Three.js scene of a fictional supermarket is an approved, clearly labeled visual demonstration. It is not the source of truth for real store data, navigation, or routes.
+- The operational map has SVG/2D and Three.js/3D views from the same active map returned by the API. Dijkstra calculates shortest graph segments; a deterministic nearest-neighbor heuristic orders multiple stops.
+- The 3D scene renders store geometry and the backend route directly from API data. It uses stylized, procedural fixtures and labels; the fictional Mercado Aurora seed is clearly identified as demonstration data.
 - Shopping lists and routes are not persisted as backend entities. Product price, stock, payment, customer accounts, indoor positioning, and external integrations are outside the MVP.
-- Technical stack: React, TypeScript, Vite, shadcn/ui, Java, Spring Boot, PostgreSQL, Docker Compose. Three.js is approved only for the separate illustrative scene and must be documented as an architecture exception.
+- Technical stack: React, TypeScript, Vite, shadcn/ui, Java, Spring Boot, PostgreSQL, Docker Compose. Three.js is approved for the operational 3D view and remains a documented architecture exception.
 - Confirmed open product/operation decisions remain in the source-of-truth docs; do not silently invent business rules.
 
 ## Brand Commitments

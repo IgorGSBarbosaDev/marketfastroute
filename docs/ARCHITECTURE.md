@@ -12,7 +12,7 @@ Stack oficial:
 - React
 - Vite
 - shadcn/ui
-- Three.js somente para a cena demonstrativa fictícia, conforme ADR-003.
+- Three.js para a visualização 3D do mapa operacional, conforme ADR-004.
 
 ### Backend
 
@@ -105,6 +105,7 @@ O frontend é responsável por:
 - busca e seleção de produtos;
 - lista de compras;
 - renderização do mapa;
+- visualizações operacionais SVG/2D e Three.js/3D alimentadas pelo mesmo mapa ativo;
 - interação com o mapa;
 - visualização da rota;
 - comunicação com API.

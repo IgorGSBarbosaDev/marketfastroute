@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-004 — Operational 3D Map](ADR-004-operational-3d-map.md)
 
 ## Context
 

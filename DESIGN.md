@@ -53,35 +53,41 @@ estados.
 ## Composição e comportamento
 
 - **Compras:** loja ativa, busca com atraso curto, resultados e lista à
-  esquerda; planta da API à direita. O SVG contém setores, corredores,
-  prateleiras, pontos de referência e o percurso calculado pelo servidor.
-- **Rota:** a coluna lateral mostra as paradas ordenadas. No desktop, um resumo
-  acompanha a rota sobre o mapa; no celular, ele fica abaixo da planta para
-  manter o caminho visível. Zoom, enquadramento, pan e instruções textuais
-  continuam disponíveis. Em telas táteis, a rolagem vertical da página funciona
-  mesmo quando começa sobre o mapa.
+  esquerda; planta da API à direita. O cliente pode alternar entre SVG/2D e
+  Three.js/3D. As duas vistas usam setores, corredores, prateleiras, pontos de
+  referência e o percurso calculado pelo servidor.
+- **Rota:** a coluna lateral mostra a lista de compras. Um resumo compacto e
+  recolhido fica sobre a planta em telas grandes e pequenas; ao expandir, mostra
+  entrada, paradas na ordem calculada e caixas. Calcular a rota abre a planta
+  3D; a pessoa pode mudar para 2D sem perder o percurso. Zoom, enquadramento,
+  pan e uma lista textual acompanham o caminho.
 - **Administração:** seletor de unidade, cinco áreas de trabalho e formulários
   ligados aos contratos administrativos existentes. O relatório do servidor
   apresenta pendências antes da ativação. A navegação administrativa quebra
   em duas linhas no celular para manter os cinco destinos visíveis.
-- **Demonstração 3D:** área separada e explicitamente fictícia, carregada sob
-  demanda. O mercado tem seis setores, corredores, cruzamentos, carrinhos,
-  entrada, caixas e um caminho decorativo independente da API.
+- **Mapa demonstrativo 2D:** a seed do Mercado Aurora tem sete setores, 14
+  corredores de produto, três travessas de circulação e 21 gôndolas identificadas.
+  O SVG marca o piso transitável, mantém os nomes dos setores acima das formas e
+  lê as geometrias e o grafo da API.
+- **Mercado 3D:** cena estilizada gerada a partir do mapa ativo da loja,
+  carregada sob demanda. Blocos de prateleira mostram produtos procedurais;
+  pontos de parada exibem produto e ordem. O mapa de demonstração Mercado
+  Aurora usa dados fictícios e deixa o caminho livre entre as gôndolas.
 
 ## Movimento e acessibilidade
 
 - O caminho SVG é revelado ao receber uma rota; resumos entram com deslocamento
   curto; carregamentos usam indicador discreto.
-- A apresentação da cena dura oito segundos e termina parada. A pessoa pode
-  pausar, reproduzir novamente, girar pelo ponteiro ou setas e redefinir a
-  câmera. `prefers-reduced-motion` inicia a cena parada.
+- A cena 3D não gira automaticamente. Arraste para orbitar, use o scroll para
+  aproximar, o botão direito para mover e os controles para enquadrar ou
+  restaurar a planta. O movimento depende das ações da pessoa.
 - O CSS reduz animações e transições em `prefers-reduced-motion`.
 - Foco visível, nomes acessíveis nos controles do mapa, campos rotulados,
   estados `status`/`alert` e instruções da rota em lista textual acompanham a
   visualização.
 - Em telas com toque, botões e campos usam área mínima de 44 × 44 px.
-- Se WebGL2 não iniciar ou perder o contexto, a cena mantém setores, corredores,
-  entrada, caixas e texto em uma planta estática.
+- Se WebGL2 não iniciar ou perder o contexto, a interface oferece a planta
+  SVG/2D com a mesma rota.
 
 ## Revisão visual — 2026-09-23
 
@@ -93,11 +99,26 @@ Capturas e fluxos foram revistos no navegador local, em 1440×900 e 390×844:
 - cena 3D com WebGL2 iniciando no navegador.
 
 Ajustes feitos na revisão: as cinco abas administrativas passam a ocupar duas
-linhas no celular; o resumo da rota deixa de cobrir o mapa móvel; a planta
-ajusta sua altura ao desenho; o resumo identifica corretamente “1 parada”. O
-fallback sem WebGL2 tem teste automatizado.
+linhas no celular; a planta ajusta sua altura ao desenho; o resumo identifica
+corretamente “1 parada”. O fallback sem WebGL2 tem teste automatizado.
+
+Na revisão de 2026-09-23, o resumo da rota passou a recolher seus detalhes e a
+ficar sobre o mapa também no celular. A seed demonstrativa foi alinhada à
+composição aprovada, mantendo os setores, corredores, prateleiras e grafo como
+dados da API.
 
 Essa revisão não substitui auditoria independente de contraste nem teste
 completo com leitores de tela. A execução integrada dos cadastros e da
 publicação foi concluída com PostgreSQL/Testcontainers e Compose local em
 2026-09-23.
+
+## Revisão da rota 3D — 2026-09-23
+
+A cena operacional substitui a rota decorativa independente. A geometria vem
+da versão ativa retornada pela API, a rota segue os pontos calculados pelo
+backend e a planta 2D continua disponível no seletor. A maquete Mercado
+Aurora organiza 14 corredores de produto de 2,5 m e travessas explícitas, com
+hortifruti e padaria perto da entrada, mercearia no centro, laticínios e
+congelados no perímetro oposto e caixas na frente. As prateleiras ficam fora
+das travessas; o conteúdo é
+procedural e fictício.

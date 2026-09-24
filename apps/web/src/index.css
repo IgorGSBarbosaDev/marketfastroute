@@ -146,7 +146,28 @@ h1, h2, h3, p { margin-top: 0; }
 .map-topline { display: flex; align-items: center; justify-content: space-between; min-height: 51px; gap: 14px; }
 .map-topline h2 { margin: 0; font-family: 'Lora Variable', Georgia, serif; font-size: 23px; font-weight: 550; letter-spacing: -0.025em; }
 .map-version { padding: 6px 10px; border: 1px solid #d2d4c7; border-radius: 999px; color: #4f6368; font-size: 10px; white-space: nowrap; }
+.map-presentation-switch { display: inline-flex; flex: 0 0 auto; gap: 3px; padding: 3px; border: 1px solid #d1d6ca; border-radius: 9px; background: #e7e8de; }
+.map-presentation-switch button { min-height: 31px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #506269; font-size: 10px; font-weight: 600; cursor: pointer; }
+.map-presentation-switch button[aria-pressed=true] { background: #fbfaf5; color: #29485b; box-shadow: 0 1px 4px rgb(38 57 57 / 15%); }
+.map-presentation-switch button:focus-visible { outline: 2px solid #31596d; outline-offset: 2px; }
 .map-stage { position: relative; min-height: min(540px, calc(100svh - 350px)); flex: 1; overflow: hidden; border: 1px solid #c9cec2; border-radius: 14px; background: #f4f2e8; }
+.three-map-view { position: absolute; inset: 0; overflow: hidden; background: #e9e7dc; }
+.three-map-canvas { position: absolute; inset: 0; }
+.three-map-canvas canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.three-map-canvas canvas:active { cursor: grabbing; }
+.three-map-tools { position: absolute; z-index: 3; bottom: 17px; left: 16px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #c6cec4; border-radius: 10px; background: #fbfaf5; box-shadow: 0 5px 14px rgb(30 50 52 / 12%); }
+.three-map-tools button { display: grid; width: 37px; height: 37px; place-items: center; border: 0; border-bottom: 1px solid #e0e1d8; background: transparent; color: #294a60; cursor: pointer; }
+.three-map-tools button:last-child { border-bottom: 0; }
+.three-map-tools button:hover { background: #e6ece4; }
+.three-map-tools button:focus-visible { position: relative; z-index: 1; outline: 2px solid #31596d; outline-offset: -2px; }
+.three-map-tools svg { width: 17px; height: 17px; }
+.three-map-hint { position: absolute; z-index: 2; bottom: 20px; left: 63px; margin: 0; padding: 7px 9px; border: 1px solid #d2d4c9; border-radius: 7px; background: rgb(251 250 245 / 95%); color: #53656a; font-size: 9px; }
+.three-map-route-chip { position: absolute; z-index: 2; right: 17px; bottom: 18px; padding: 8px 11px; border: 1px solid #d4d6ca; border-radius: 999px; background: rgb(251 250 245 / 96%); color: #5a4318; font-size: 10px; font-weight: 650; box-shadow: 0 4px 12px rgb(30 50 52 / 10%); }
+.three-map-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; padding: 24px; background: radial-gradient(ellipse at 45% 44%, #f9f8f0, #e9e8de 72%); color: #4d6168; font-size: 12px; text-align: center; }
+.three-map-error button { min-height: 40px; padding: 0 13px; border: 1px solid #c6cec4; border-radius: 8px; background: #fbfaf5; color: #294a60; font-weight: 600; cursor: pointer; }
+.three-map-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 24px; background: radial-gradient(ellipse at 45% 44%, #f9f8f0, #e9e8de 72%); color: #4d6168; text-align: center; }
+.three-map-empty strong { color: #2d4858; font-size: 15px; }
+.three-map-empty span { max-width: 360px; color: #58696c; font-size: 11px; line-height: 1.55; }
 .atlas-canvas-wrap { position: absolute; inset: 0; overflow: hidden; touch-action: pan-x pan-y; }
 .atlas-canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: pan-y; user-select: none; }
 .atlas-canvas:active { cursor: grabbing; }
@@ -320,52 +341,6 @@ h1, h2, h3, p { margin-top: 0; }
 .legend-shelf { width: 13px; height: 8px; border: 1px solid #48626c; border-radius: 2px; background: #718a8c; }
 .admin-footer { display: flex; align-items: center; gap: 7px; margin-top: 13px; padding-top: 10px; border-top: 1px solid var(--line); color: #59696d; font-size: 9px; }
 
-/* Fictional Three.js demonstration */
-.demo-back { display: inline-flex; align-items: center; gap: 8px; min-height: 37px; padding: 0 11px; border: 1px solid #cbd1c7; border-radius: 8px; background: #f9f8f2; color: #345465; font-size: 11px; cursor: pointer; }
-.demo-intro { display: flex; align-items: end; justify-content: space-between; gap: 28px; padding: 28px 0 19px; }
-.demo-intro h1 { margin: 0; font-size: clamp(31px, 3.2vw, 46px); }
-.demo-intro p { max-width: 650px; margin: 12px 0 0; color: #53656a; font-size: 13px; line-height: 1.7; }
-.demo-intro-actions { display: flex; align-items: center; gap: 15px; padding-bottom: 4px; }
-.demo-intro-actions button { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 12px; border: 0; border-radius: 8px; background: #284760; color: white; font-size: 11px; cursor: pointer; }
-.demo-intro-actions span { display: inline-flex; align-items: center; gap: 5px; color: #52666a; font-size: 10px; white-space: nowrap; }
-.scene-card { overflow: hidden; border: 1px solid #cdd1c4; border-radius: 15px; background: #f8f7ef; }
-.scene-disclaimer { display: flex; align-items: center; gap: 9px; min-height: 43px; padding: 0 15px; border-bottom: 1px solid #d9dbcf; color: #385e48; font-size: 10px; }
-.scene-disclaimer strong { color: #315341; font-size: 11px; }
-.scene-disclaimer > span:last-child { margin-left: auto; color: #5a686b; }
-.fiction-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 3px #f1e5cb; }
-.scene-canvas { height: min(61vh, 610px); min-height: 400px; background: #eeeade; }
-.scene-canvas canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: pan-y; }
-.scene-canvas canvas:active { cursor: grabbing; }
-.scene-controls { display: flex; align-items: center; gap: 11px; min-height: 47px; padding: 0 14px; border-top: 1px solid #d8dad0; }
-.scene-controls button { display: inline-flex; align-items: center; gap: 7px; min-height: 31px; padding: 0 10px; border: 1px solid #ced4ca; border-radius: 8px; background: #fbfaf4; color: #315268; font-size: 10px; cursor: pointer; }
-.scene-controls button svg { width: 14px; height: 14px; }
-.scene-controls > span { flex: 1; color: #5c6b6d; font-size: 9px; }
-.scene-controls .scene-reset { width: 31px; justify-content: center; padding: 0; }
-.scene-sectors { display: flex; flex-wrap: wrap; gap: 8px 17px; padding: 11px 14px 13px; border-top: 1px solid #e1e2d8; }
-.scene-sectors span { display: inline-flex; align-items: center; gap: 6px; color: #4d6269; font-size: 9px; }
-.scene-sectors i { width: 11px; height: 8px; border: 1px solid #b8c3b8; border-radius: 2px; }
-.static-market-fallback { padding: 18px; background: #efeee4; }
-.static-market-fallback > p { max-width: 680px; margin: 0 auto 12px; color: #4c6066; font-size: 11px; line-height: 1.6; text-align: center; }
-.fallback-market-map { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, minmax(115px, 1fr)); gap: 9px; max-width: 850px; min-height: 280px; margin: 0 auto; padding: 26px 32px; border: 2px solid #67818a; border-radius: 12px; background: #faf9f1; }
-.fallback-sector { position: relative; z-index: 1; display: flex; justify-content: space-between; flex-direction: column; padding: 9px; border: 1px solid #becabd; border-radius: 8px; background: #e2e9dc; color: #304e5b; font-family: 'Lora Variable', Georgia, serif; font-size: 12px; }
-.sector-2, .sector-5 { background: #dde7e9; }
-.sector-3 { background: #eee6d4; }
-.sector-4 { background: #e9e4d8; }
-.sector-6 { background: #dfe7e9; }
-.fallback-aisles { display: flex; justify-content: space-evenly; gap: 7px; height: 48px; }
-.fallback-aisles i { width: 13px; border: 1px solid #55717a; border-radius: 3px; background: #748c8e; }
-.fallback-market-map svg { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.fallback-market-map svg path { fill: none; stroke: var(--amber); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
-.fallback-entrance, .fallback-checkouts { position: absolute; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid #cad1c5; border-radius: 7px; background: #fbfaf5; color: #315064; font-size: 8px; }
-.fallback-entrance { bottom: -11px; left: 7%; }
-.fallback-entrance i, .fallback-checkouts i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #416b7a; }
-.fallback-checkouts { top: 48%; right: -13px; }
-.fallback-checkouts i { width: 6px; height: 13px; border-radius: 2px; background: #668b76; }
-.demo-note { display: flex; align-items: center; gap: 13px; margin-top: 17px; padding: 13px 15px; border: 1px solid #d5d8cc; border-radius: 10px; background: #f7f6ee; }
-.demo-note strong { color: #345649; font-size: 11px; }
-.demo-note span { flex: 1; color: #58696c; font-size: 10px; }
-.demo-note button { display: inline-flex; align-items: center; gap: 5px; padding: 6px 0 6px 6px; border: 0; background: transparent; color: #31556a; font-size: 10px; font-weight: 650; cursor: pointer; }
-.screen-loading { display: flex; min-height: 100svh; align-items: center; justify-content: center; gap: 10px; color: #435d64; font-size: 13px; }
 
 @media (max-width: 1180px) {
   .app-frame { padding-right: 23px; padding-left: 23px; }
@@ -385,7 +360,7 @@ h1, h2, h3, p { margin-top: 0; }
   .map-stage { min-height: 490px; }
   .admin-section-layout, .map-admin-layout, .editor-layout { grid-template-columns: minmax(0, 1fr); }
   .editor-map-panel .atlas-canvas-wrap { height: 470px; }
-  .demo-intro { align-items: flex-start; }
+  .map-presentation-switch button { padding: 0 8px; }
 }
 
 @media (max-width: 700px) {
@@ -455,15 +430,13 @@ h1, h2, h3, p { margin-top: 0; }
   .admin-tabs { flex-wrap: wrap; overflow: visible; gap: 5px; padding-bottom: 10px; }
   .admin-tab { min-width: calc(33.333% - 4px); flex: 1 1 calc(33.333% - 4px); min-height: 40px; padding: 0 7px; border-radius: 8px; white-space: normal; }
   .lifecycle-actions .button { flex: 1 1 auto; }
-  .demo-back { min-height: 31px; padding: 0 7px; font-size: 9px; }
-  .demo-intro { flex-direction: column; gap: 14px; padding: 22px 0 16px; }
-  .demo-intro h1 { font-size: 31px; }
-  .demo-intro p { margin-top: 9px; font-size: 11px; }
-  .demo-intro-actions { width: 100%; justify-content: space-between; }
-  .scene-disclaimer { min-height: auto; flex-wrap: wrap; gap: 6px 8px; padding: 10px 11px; }
-  .scene-disclaimer > span:last-child { width: 100%; margin-left: 16px; font-size: 9px; }
-  .scene-canvas { height: 50svh; min-height: 310px; }
-  .scene-controls { gap: 7px; padding: 0 8px; }
+  .map-topline { display: grid; grid-template-columns: minmax(0, 1fr) auto; min-height: 78px; gap: 7px; }
+  .map-presentation-switch { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
+  .map-presentation-switch button { min-height: 33px; }
+  .three-map-tools { bottom: 11px; left: 10px; }
+  .three-map-tools button { width: 34px; height: 34px; }
+  .three-map-hint { display: none; }
+  .three-map-route-chip { right: 10px; bottom: 12px; font-size: 8px; }
   .scene-controls button { min-height: 30px; gap: 5px; padding: 0 8px; font-size: 9px; }
   .scene-controls > span { font-size: 8px; }
   .scene-sectors { gap: 8px 12px; padding: 9px; }

@@ -1,10 +1,8 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
-import { LoaderCircle } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { AdminView } from '@/app/AdminView'
 import { CustomerView } from '@/app/CustomerView'
 
 type Page = 'shop' | 'admin' | 'demo'
-const DemoView = lazy(() => import('@/app/DemoView'))
 
 function pageFromHash(): Page {
   const value = window.location.hash.replace(/^#\/?/, '')
@@ -28,7 +26,6 @@ function App() {
   }, [page])
 
   if (page === 'admin') return <AdminView activePage={page} navigate={navigate} />
-  if (page === 'demo') return <Suspense fallback={<div className="screen-loading"><LoaderCircle className="spin" /> Abrindo a demonstração…</div>}><DemoView activePage={page} navigate={navigate} /></Suspense>
   return <CustomerView activePage={page} navigate={navigate} />
 }
 

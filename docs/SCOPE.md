@@ -38,13 +38,15 @@ Agentes de IA não devem inferir funcionalidades adicionais com base em produtos
 ## Map
 
 - mapa específico por loja;
-- visual 2.5D ou pseudo-3D;
+- planta 2D e visualização 3D derivadas do mesmo mapa ativo;
 - renderização web;
 - setores identificados;
 - corredores identificados;
 - blocos/prateleiras representados visualmente;
 - pontos de interesse;
 - rota sobreposta ao mapa;
+- rota 3D calculada pelo backend, seguindo os corredores do grafo;
+- seleção entre as visões 2D e 3D;
 - grafo de navegação associado ao mapa.
 
 ---
@@ -148,20 +150,21 @@ Os itens abaixo não devem ser implementados no MVP.
 
 ## Advanced Mapping
 
-- modelagem 3D realista ou detalhada do mapa operacional;
+- modelagem 3D fotorrealista;
 - Unity;
 - Unreal Engine;
 - avatares;
 - realidade aumentada;
 - realidade virtual.
 
-### Exceção autorizada — demonstração fictícia
+### Exceção autorizada — visualização 3D operacional
 
-O MVP inclui uma cena leve e ilustrativa de um mercado fictício em
-Three.js/WebGL. Ela é conteúdo demonstrativo independente: não é mapa de uma
-loja real, não usa dados da API, não recebe nem produz rotas e não substitui o
-mapa operacional em SVG. A dependência e seus limites estão registrados em
-`docs/ADR-003-threejs-demonstration.md`.
+O MVP inclui uma visualização WebGL em Three.js para o mapa ativo da loja. Ela
+usa setores, corredores, prateleiras e pontos de interesse da API; a rota vem
+do endpoint existente e segue o grafo publicado. A planta SVG continua
+disponível como outra visualização dos mesmos dados. Modelagem fotorrealista e
+visualização baseada em Unity/Unreal continuam fora do escopo. A decisão está
+registrada em `docs/ADR-004-operational-3d-map.md`.
 
 ---
 

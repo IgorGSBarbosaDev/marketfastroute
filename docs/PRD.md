@@ -4,7 +4,7 @@
 
 Sistema web para navegação interna em supermercados de grande porte.
 
-O cliente seleciona uma loja, escolhe os produtos que deseja comprar e recebe uma rota otimizada dentro da loja, visualizada em um mapa indoor com aparência 2.5D inspirada em mapas como Google Maps e Waze.
+O cliente seleciona uma loja, escolhe os produtos que deseja comprar e recebe uma rota otimizada dentro da loja, visualizada em uma planta 2D ou em uma cena 3D da unidade.
 
 O objetivo principal é reduzir o tempo e a distância percorrida pelo cliente dentro do supermercado.
 
@@ -78,15 +78,11 @@ Duas unidades da mesma rede podem possuir:
 
 ### 4.4 Visual Orientation
 
-O mapa deve priorizar orientação e legibilidade.
-
-Não é objetivo do MVP criar um ambiente 3D realista para navegação.
-
-Uma cena demonstrativa de um supermercado fictício pode usar Three.js/WebGL
-para apresentar uma visão 3D ilustrativa. Ela deve ficar separada do mapa
-operacional: não representa os dados persistidos da loja, não calcula rotas e
-não substitui a navegação SVG. A decisão está registrada em
-`docs/ADR-003-threejs-demonstration.md`.
+O mapa deve priorizar orientação e legibilidade nas visualizações 2D e 3D.
+Ambas representam os mesmos dados do mapa ativo da loja. A rota calculada pelo
+backend deve seguir o grafo e ser exibida em qualquer visualização. A cena 3D
+é navegável e ilustrativa; não precisa ser fotorrealista. A decisão está
+registrada em `docs/ADR-004-operational-3d-map.md`.
 
 ---
 
@@ -231,7 +227,7 @@ A localização pode conter:
 
 ## 8. Map Requirements
 
-O mapa deve possuir visual 2.5D ou pseudo-3D.
+O mapa deve possuir planta 2D e visualização 3D com base no mapa ativo da loja.
 
 Características esperadas:
 
@@ -245,7 +241,10 @@ Características esperadas:
 - rota destacada;
 - produtos destacados.
 
-Não é requisito do MVP possuir renderização 3D real.
+Na visualização 3D, setores, corredores, blocos de prateleiras e pontos de
+interesse devem refletir as geometrias da API. O traçado deve usar os pontos
+ordenados retornados pelo cálculo de rota, sem atravessar as estruturas do
+mapa. Produtos e paradas da lista devem ser identificáveis junto à rota.
 
 ---
 

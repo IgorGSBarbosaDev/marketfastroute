@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { AlertCircle, ArrowUp, Check, ChevronDown, CircleHelp, Compass, LoaderCircle, MapPinned, Minus, Plus, Search, ShoppingBasket, Store as StoreIcon, Trash2, X } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,8 @@ import { StoreMapSvg } from '@/components/StoreMapSvg'
 import { calculateStoreRoute, getActiveStoreMap, getProductLocations, listStores, searchStoreProducts } from '@/services/customer-api'
 import type { CalculatedRoute, Product, ProductLocation, Store, StoreMap } from '@/types/api'
 import { ApiRequestError } from '@/services/api-client'
+
+const ThreeMarketScene = lazy(() => import('@/app/MarketScene').then((module) => ({ default: module.MarketScene })))
 
 interface CustomerViewProps {
   activePage: 'shop' | 'admin' | 'demo'
@@ -24,6 +26,7 @@ const formatDistance = (meters: number) => `${new Intl.NumberFormat('pt-BR', { m
 const formatStopCount = (count: number) => `${count} ${count === 1 ? 'parada' : 'paradas'}`
 
 export function CustomerView({ activePage, navigate }: CustomerViewProps) {
+  const [mapPresentation, setMapPresentation] = useState<'2d' | '3d'>(() => activePage === 'demo' ? '3d' : '2d')
   const [stores, setStores] = useState<Store[]>([])
   const [storeId, setStoreId] = useState('')
   const [map, setMap] = useState<StoreMap | null>(null)
@@ -204,6 +207,8 @@ export function CustomerView({ activePage, navigate }: CustomerViewProps) {
     try {
       const result = await calculateStoreRoute(storeId, shoppingList.map(({ product }) => product.id))
       setRoute(result)
+      setMapPresentation('3d')
+      navigate('demo')
       setMobilePane('map')
     } catch (error) {
       setRouteError(errorMessage(error))
@@ -220,9 +225,9 @@ export function CustomerView({ activePage, navigate }: CustomerViewProps) {
           <span><strong>Market Fast Route</strong><small>Atlas interativo da loja</small></span>
         </a>
         <nav className="main-nav" aria-label="Navegação principal">
-          <button className={activePage === 'shop' ? 'nav-link active' : 'nav-link'} onClick={() => navigate('shop')}>Compras</button>
+          <button className={activePage === 'shop' ? 'nav-link active' : 'nav-link'} onClick={() => { setMapPresentation('2d'); navigate('shop') }}>Compras</button>
           <button className={activePage === 'admin' ? 'nav-link active' : 'nav-link'} onClick={() => navigate('admin')}>Administração</button>
-          <button className={activePage === 'demo' ? 'nav-link active' : 'nav-link'} onClick={() => navigate('demo')}>Mercado 3D</button>
+          <button className={activePage === 'demo' || mapPresentation === '3d' ? 'nav-link active' : 'nav-link'} onClick={() => { setMapPresentation('3d'); navigate('demo') }}>Mercado 3D</button>
         </nav>
         <div className="topbar-note"><span className="status-dot" /> Ambiente local</div>
       </header>
@@ -314,10 +319,17 @@ export function CustomerView({ activePage, navigate }: CustomerViewProps) {
         <section className={`map-workspace ${mobilePane === 'list' ? 'mobile-hidden' : ''}`} aria-label="Mapa e percurso da loja">
           <div className="map-topline">
             <div><h2>{map?.name ?? 'Planta da loja'}</h2></div>
+            <div className="map-presentation-switch" role="group" aria-label="Modo de visualização do mapa">
+              <button type="button" aria-pressed={mapPresentation === '2d'} onClick={() => { setMapPresentation('2d'); if (activePage === 'demo') navigate('shop') }}>Planta 2D</button>
+              <button type="button" aria-pressed={mapPresentation === '3d'} onClick={() => { setMapPresentation('3d'); if (activePage !== 'demo') navigate('demo') }}>Mapa 3D</button>
+            </div>
             <span className="map-version">{map ? `Versão ${map.version}` : 'Mapa operacional'}</span>
           </div>
           <div className="map-stage">
-            {mapLoading ? <MapLoadingState /> : map?.storeId === storeId ? <StoreMapSvg map={map} route={route} /> : <MapEmptyState message={currentMapError || (currentStoreError ? 'Recarregue a lista de lojas pelo controle abaixo do seletor.' : 'Selecione uma loja com mapa ativo para visualizar a planta.')} onRetry={retryMap} />}
+            {mapLoading ? <MapLoadingState /> : map?.storeId === storeId ? (mapPresentation === '2d'
+              ? <StoreMapSvg map={map} route={route} />
+              : <Suspense fallback={<MapLoadingState />}><ThreeMarketScene map={map} route={route} locations={productLocations} onSwitchTo2D={() => setMapPresentation('2d')} /></Suspense>)
+              : <MapEmptyState message={currentMapError || (currentStoreError ? 'Recarregue a lista de lojas pelo controle abaixo do seletor.' : 'Selecione uma loja com mapa ativo para visualizar a planta.')} onRetry={retryMap} />}
             {route && <Card className="route-summary" aria-live="polite">
               <Collapsible open={routeSummaryOpen} onOpenChange={setRouteSummaryOpen} className="route-summary-disclosure">
                 <CollapsibleTrigger asChild>
