@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, ArrowUp, Check, ChevronDown, CircleHelp, Compass, LoaderCircle, MapPinned, Minus, Plus, Search, ShoppingBasket, Store as StoreIcon, Trash2, X } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { StoreMapSvg } from '@/components/StoreMapSvg'
 import { calculateStoreRoute, getActiveStoreMap, getProductLocations, listStores, searchStoreProducts } from '@/services/customer-api'
 import type { CalculatedRoute, Product, ProductLocation, Store, StoreMap } from '@/types/api'
@@ -44,6 +46,7 @@ export function CustomerView({ activePage, navigate }: CustomerViewProps) {
   const [route, setRoute] = useState<CalculatedRoute | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
   const [routeError, setRouteError] = useState('')
+  const [routeSummaryOpen, setRouteSummaryOpen] = useState(false)
   const [mobilePane, setMobilePane] = useState<'list' | 'map'>('list')
 
   useEffect(() => {
@@ -132,6 +135,10 @@ export function CustomerView({ activePage, navigate }: CustomerViewProps) {
   const listIds = useMemo(() => new Set(shoppingList.map(({ product }) => product.id)), [shoppingList])
   const routeUnavailable = shoppingList.some((line) => line.locationState === 'missing')
   const routeStops = useMemo(() => new Map(route?.orderedStops.map((stop) => [stop.productId, stop.order]) ?? []), [route])
+  const productLocations = useMemo(() => shoppingList.flatMap(({ product, locations }) =>
+    locations.map((location) => ({ ...location, productName: product.name })),
+  ), [shoppingList])
+  const routeLocationsById = useMemo(() => new Map(productLocations.map((location) => [location.id, location])), [productLocations])
   const entryLabel = map?.pointsOfInterest.find(({ type }) => type === 'ENTRANCE')?.name ?? map?.nodes.find(({ type }) => type === 'ENTRANCE')?.label ?? 'Entrada'
   const checkoutLabel = map?.pointsOfInterest.find(({ type }) => type === 'CHECKOUT')?.name ?? map?.nodes.find(({ type }) => type === 'CHECKOUT')?.label ?? 'Caixas'
 
@@ -193,6 +200,7 @@ export function CustomerView({ activePage, navigate }: CustomerViewProps) {
     setRouteLoading(true)
     setRouteError('')
     setRoute(null)
+    setRouteSummaryOpen(false)
     try {
       const result = await calculateStoreRoute(storeId, shoppingList.map(({ product }) => product.id))
       setRoute(result)
@@ -310,19 +318,51 @@ export function CustomerView({ activePage, navigate }: CustomerViewProps) {
           </div>
           <div className="map-stage">
             {mapLoading ? <MapLoadingState /> : map?.storeId === storeId ? <StoreMapSvg map={map} route={route} /> : <MapEmptyState message={currentMapError || (currentStoreError ? 'Recarregue a lista de lojas pelo controle abaixo do seletor.' : 'Selecione uma loja com mapa ativo para visualizar a planta.')} onRetry={retryMap} />}
-            {route && <div className="route-summary" aria-live="polite">
-              <div className="route-summary-head"><span className="route-icon"><Compass size={17} /></span><div><strong>Percurso pronto</strong><small>{formatStopCount(route.orderedStops.length)} · {formatDistance(Number(route.distanceMeters))}</small></div></div>
-              <div className="route-endpoint"><span className="endpoint-dot start" /><span><small>COMECE NA</small><strong>{entryLabel}</strong></span><ArrowUp /></div>
-              {route.orderedStops.map((stop) => <div className="route-stop" key={stop.productLocationId}><span>{stop.order}</span><strong>{stop.productName}</strong></div>)}
-              <div className="route-endpoint"><span className="endpoint-dot finish" /><span><small>FINALIZE NOS</small><strong>{checkoutLabel}</strong></span><Check /></div>
-            </div>}
+            {route && <Card className="route-summary" aria-live="polite">
+              <Collapsible open={routeSummaryOpen} onOpenChange={setRouteSummaryOpen} className="route-summary-disclosure">
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="route-summary-trigger"
+                    aria-label={`${routeSummaryOpen ? 'Recolher' : 'Expandir'} detalhes do percurso`}
+                  >
+                    <span className="route-icon"><Compass size={18} aria-hidden="true" /></span>
+                    <span className="route-summary-copy">
+                      <strong>Percurso pronto</strong>
+                      <small>{formatStopCount(route.orderedStops.length)} · {formatDistance(Number(route.distanceMeters))}</small>
+                    </span>
+                    <ChevronDown className="route-summary-chevron" aria-hidden="true" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="route-summary-details">
+                  <CardContent className="route-summary-content">
+                    <div className="route-endpoint"><span className="endpoint-dot start" /><span><small>COMECE NA</small><strong>{entryLabel}</strong></span><ArrowUp aria-hidden="true" /></div>
+                    <ol className="route-stop-list" aria-label="Paradas para encontrar produtos">
+                      {route.orderedStops.map((stop) => {
+                        const location = routeLocationsById.get(stop.productLocationId)
+                        const aisle = map?.aisles.find(({ name }) => name === location?.aisle)
+                        const aisleName = aisle?.name.replace(/^Corredor(?:\s+\d+\s+de|\s+de)?\s*/i, '') ?? location?.aisle
+                        const aisleLabel = aisle
+                          ? `Corredor ${aisle.code} · ${aisleName}`
+                          : aisleName
+                            ? `Corredor · ${aisleName}`
+                            : 'Corredor não identificado'
+                        return (
+                          <li className="route-stop" key={stop.productLocationId}>
+                            <span>{stop.order}</span>
+                            <div className="route-stop-copy"><strong>{stop.productName}</strong><small>{aisleLabel}</small></div>
+                          </li>
+                        )
+                      })}
+                    </ol>
+                    <div className="route-endpoint"><span className="endpoint-dot finish" /><span><small>FINALIZE NOS</small><strong>{checkoutLabel}</strong></span><Check aria-hidden="true" /></div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>}
           </div>
-          {route && <div className="route-instructions"><strong className="route-instructions-heading"><span><Compass size={16} /> Ordem de visita</span><small>{formatStopCount(route.orderedStops.length)} · {formatDistance(Number(route.distanceMeters))}</small></strong><ol>
-            <li>Inicie em {entryLabel}.</li>
-            {route.orderedStops.map((stop) => <li key={stop.productLocationId}>Encontre {stop.productName}.</li>)}
-            <li>Conclua em {checkoutLabel}.</li>
-          </ol></div>}
-          <div className="map-legend"><span><i className="legend-sector" /> Setores e corredores</span><span><i className="legend-route" /> Caminho calculado</span><span><i className="legend-poi">E</i> Pontos da loja</span></div>
+          <div className="map-legend"><span><i className="legend-floor" /> Piso livre transitável</span><span><i className="legend-aisle" /> Corredores</span><span><i className="legend-shelf" /> Prateleiras</span><span><i className="legend-route" /> Percurso calculado</span><span><i className="legend-poi">E</i> Pontos da loja</span></div>
           <div className="map-footnote"><span><MapPinned size={15} /> Planta e percurso fornecidos pela API desta loja.</span><span>{map ? `${map.width} × ${map.height} unidades` : ''}</span></div>
         </section>
       </section>

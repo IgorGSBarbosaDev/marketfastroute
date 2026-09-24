@@ -221,6 +221,8 @@ Não devem ser tratados como requisitos atuais.
 - rotas alternativas;
 - restrições de mobilidade;
 - múltiplos andares.
+- localização mais específica que o corredor, como gôndola, lado e nível de
+  prateleira; por enquanto, a instrução de rota informa somente o corredor.
 
 ---
 
