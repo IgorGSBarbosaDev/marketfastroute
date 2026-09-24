@@ -3,6 +3,7 @@ package com.marketfastroute.map;
 import com.marketfastroute.admin.AdminResourceNotFoundException;
 import com.marketfastroute.admin.AdminValidationException;
 import com.marketfastroute.admin.dto.CreateMapEdgeRequest;
+import com.marketfastroute.admin.dto.CreateMapNodeRequest;
 import com.marketfastroute.admin.dto.CreatePointOfInterestRequest;
 import com.marketfastroute.store.StoreMap;
 import com.marketfastroute.store.StoreMapRepository;
@@ -18,6 +19,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,7 +51,7 @@ class MapGraphAdminServiceTest {
         UUID nodeId = UUID.randomUUID();
         MapNode node = node(nodeId, mapId);
         StoreMap map = map(mapId);
-        when(storeMapRepository.findById(mapId)).thenReturn(Optional.of(map));
+        when(storeMapRepository.findByIdForUpdate(mapId)).thenReturn(Optional.of(map));
         when(mapNodeRepository.findByStoreMap_IdAndId(mapId, nodeId)).thenReturn(Optional.of(node));
 
         assertThrows(AdminValidationException.class, () -> service.createEdge(
@@ -57,11 +59,22 @@ class MapGraphAdminServiceTest {
     }
 
     @Test
+    void rejectsGraphChangesToAnArchivedMap() {
+        UUID mapId = UUID.randomUUID();
+        StoreMap map = map(mapId, MapStatus.ARCHIVED);
+        when(storeMapRepository.findByIdForUpdate(mapId)).thenReturn(Optional.of(map));
+
+        assertThrows(AdminValidationException.class, () -> service.createNode(
+                mapId,
+                new CreateMapNodeRequest(MapNodeType.PATH, BigDecimal.ZERO, BigDecimal.ZERO, "Path", true)));
+    }
+
+    @Test
     void rejectsPointOfInterestNodeFromAnotherMap() {
         UUID mapId = UUID.randomUUID();
         UUID foreignNodeId = UUID.randomUUID();
         StoreMap map = map(mapId);
-        when(storeMapRepository.findById(mapId)).thenReturn(Optional.of(map));
+        when(storeMapRepository.findByIdForUpdate(mapId)).thenReturn(Optional.of(map));
         when(mapNodeRepository.findByStoreMap_IdAndId(mapId, foreignNodeId)).thenReturn(Optional.empty());
 
         assertThrows(AdminResourceNotFoundException.class, () -> service.createPointOfInterest(
@@ -72,7 +85,13 @@ class MapGraphAdminServiceTest {
     }
 
     private StoreMap map(UUID id) {
-        return mock(StoreMap.class);
+        return map(id, MapStatus.DRAFT);
+    }
+
+    private StoreMap map(UUID id, MapStatus status) {
+        StoreMap map = mock(StoreMap.class);
+        lenient().when(map.getStatus()).thenReturn(status);
+        return map;
     }
 
     private MapNode node(UUID id, UUID mapId) {

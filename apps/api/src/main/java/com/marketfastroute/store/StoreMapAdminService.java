@@ -6,9 +6,12 @@ import com.marketfastroute.admin.dto.CreateStoreMapRequest;
 import com.marketfastroute.admin.dto.StoreMapAdminResponse;
 import com.marketfastroute.admin.dto.UpdateStoreMapRequest;
 import com.marketfastroute.map.MapStatus;
+import com.marketfastroute.map.MapPublicationValidator;
+import com.marketfastroute.admin.AdminValidationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -19,10 +22,16 @@ public class StoreMapAdminService {
 
     private final StoreRepository storeRepository;
     private final StoreMapRepository storeMapRepository;
+    private final MapPublicationValidator mapPublicationValidator;
 
-    public StoreMapAdminService(StoreRepository storeRepository, StoreMapRepository storeMapRepository) {
+    public StoreMapAdminService(
+            StoreRepository storeRepository,
+            StoreMapRepository storeMapRepository,
+            MapPublicationValidator mapPublicationValidator
+    ) {
         this.storeRepository = storeRepository;
         this.storeMapRepository = storeMapRepository;
+        this.mapPublicationValidator = mapPublicationValidator;
     }
 
     public List<StoreMapAdminResponse> findByStore(UUID storeId) {
@@ -41,7 +50,10 @@ public class StoreMapAdminService {
     public StoreMapAdminResponse create(UUID storeId, CreateStoreMapRequest request) {
         Store store = ensureStore(storeId);
         ensureVersionIsAvailable(storeId, request.version(), null);
-        ensureCanBecomeActive(storeId, null, request.status() == null ? MapStatus.DRAFT : request.status());
+        MapStatus status = request.status() == null ? MapStatus.DRAFT : request.status();
+        if (status != MapStatus.DRAFT) {
+            throw new AdminValidationException("Create the map as DRAFT, configure it, then validate before activation");
+        }
 
         StoreMap map = new StoreMap();
         map.setStore(store);
@@ -51,8 +63,16 @@ public class StoreMapAdminService {
 
     @Transactional
     public StoreMapAdminResponse update(UUID storeId, UUID mapId, UpdateStoreMapRequest request) {
-        StoreMap map = ensureStoreMap(storeId, mapId);
+        ensureStore(storeId);
+        if (request.status() == MapStatus.ACTIVE) {
+            storeRepository.findByIdForUpdate(storeId)
+                    .orElseThrow(() -> new StoreNotFoundException(storeId));
+        }
+        StoreMap map = storeMapRepository.findByStore_IdAndIdForUpdate(storeId, mapId)
+                .orElseThrow(() -> new AdminResourceNotFoundException("Store map"));
         ensureVersionIsAvailable(storeId, request.version(), mapId);
+        ensureStatusTransitionIsAllowed(map.getStatus(), request.status());
+        ensurePublishedMetadataIsUnchanged(map, request);
         ensureCanBecomeActive(storeId, mapId, request.status());
 
         map.setVersion(request.version());
@@ -61,6 +81,9 @@ public class StoreMapAdminService {
         map.setHeight(request.height());
         map.setScaleMetersPerUnit(request.scaleMetersPerUnit());
         map.setStatus(request.status());
+        if (request.status() == MapStatus.ACTIVE) {
+            mapPublicationValidator.requirePublishable(map);
+        }
         return toResponse(storeMapRepository.save(map));
     }
 
@@ -93,6 +116,34 @@ public class StoreMapAdminService {
                 .ifPresent(activeMap -> {
                     throw new AdminConflictException("The store already has an active map");
                 });
+    }
+
+    private void ensureStatusTransitionIsAllowed(MapStatus currentStatus, MapStatus nextStatus) {
+        boolean sameStatus = currentStatus == nextStatus;
+        boolean publishDraft = currentStatus == MapStatus.DRAFT && nextStatus == MapStatus.ACTIVE;
+        boolean archiveActive = currentStatus == MapStatus.ACTIVE && nextStatus == MapStatus.ARCHIVED;
+        if (!sameStatus && !publishDraft && !archiveActive) {
+            throw new AdminValidationException(
+                    "A map must move from DRAFT to ACTIVE and from ACTIVE to ARCHIVED");
+        }
+    }
+
+    private void ensurePublishedMetadataIsUnchanged(StoreMap map, UpdateStoreMapRequest request) {
+        if (map.getStatus() == MapStatus.DRAFT) {
+            return;
+        }
+        boolean unchanged = map.getVersion() == request.version()
+                && Objects.equals(map.getName(), request.name())
+                && sameDecimal(map.getWidth(), request.width())
+                && sameDecimal(map.getHeight(), request.height())
+                && sameDecimal(map.getScaleMetersPerUnit(), request.scaleMetersPerUnit());
+        if (!unchanged) {
+            throw new AdminValidationException("Published map versions are immutable; create a new draft version");
+        }
+    }
+
+    private boolean sameDecimal(BigDecimal current, BigDecimal requested) {
+        return current == null ? requested == null : requested != null && current.compareTo(requested) == 0;
     }
 
     private void apply(StoreMap map, CreateStoreMapRequest request) {

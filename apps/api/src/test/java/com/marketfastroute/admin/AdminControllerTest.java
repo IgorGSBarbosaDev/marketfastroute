@@ -3,6 +3,9 @@ package com.marketfastroute.admin;
 import com.marketfastroute.admin.dto.StoreAdminResponse;
 import com.marketfastroute.admin.dto.StoreMapAdminResponse;
 import com.marketfastroute.map.MapGraphAdminService;
+import com.marketfastroute.map.MapPublicationIssue;
+import com.marketfastroute.map.MapPublicationValidation;
+import com.marketfastroute.map.MapPublicationValidator;
 import com.marketfastroute.map.MapNodeType;
 import com.marketfastroute.map.MapStructureAdminService;
 import com.marketfastroute.map.MapStatus;
@@ -16,11 +19,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -33,6 +38,7 @@ class AdminControllerTest {
     private final StoreMapAdminService storeMapAdminService = mock(StoreMapAdminService.class);
     private final MapStructureAdminService mapStructureAdminService = mock(MapStructureAdminService.class);
     private final MapGraphAdminService mapGraphAdminService = mock(MapGraphAdminService.class);
+    private final MapPublicationValidator mapPublicationValidator = mock(MapPublicationValidator.class);
 
     private MockMvc storeMockMvc;
     private MockMvc mapMockMvc;
@@ -44,7 +50,7 @@ class AdminControllerTest {
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
         mapMockMvc = MockMvcBuilders.standaloneSetup(
-                        new AdminMapController(mapStructureAdminService, mapGraphAdminService))
+                        new AdminMapController(mapStructureAdminService, mapGraphAdminService, mapPublicationValidator))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }
@@ -107,6 +113,22 @@ class AdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mapId.toString()))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
+    }
+
+    @Test
+    void returnsPublicationIssuesForMapValidation() throws Exception {
+        UUID mapId = UUID.randomUUID();
+        MapPublicationIssue issue = new MapPublicationIssue(
+                "NO_ACTIVE_EDGES", "At least one active edge is required", "edge", null);
+        when(mapPublicationValidator.validate(mapId)).thenReturn(
+                new MapPublicationValidation(mapId, false, List.of(issue)));
+
+        mapMockMvc.perform(get("/api/v1/admin/maps/{mapId}/validation", mapId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mapId").value(mapId.toString()))
+                .andExpect(jsonPath("$.publishable").value(false))
+                .andExpect(jsonPath("$.issues[0].code").value("NO_ACTIVE_EDGES"))
+                .andExpect(jsonPath("$.issues[0].elementType").value("edge"));
     }
 
     @Test

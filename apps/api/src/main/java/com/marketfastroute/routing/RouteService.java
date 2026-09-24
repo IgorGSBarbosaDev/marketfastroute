@@ -5,8 +5,6 @@ import com.marketfastroute.map.MapEdge;
 import com.marketfastroute.map.MapNode;
 import com.marketfastroute.map.MapNodeType;
 import com.marketfastroute.map.ActiveStoreMapResolver;
-import com.marketfastroute.map.PointOfInterest;
-import com.marketfastroute.map.PointOfInterestRepository;
 import com.marketfastroute.map.PointOfInterestType;
 import com.marketfastroute.map.MapEdgeRepository;
 import com.marketfastroute.map.MapNodeRepository;
@@ -22,8 +20,8 @@ import com.marketfastroute.store.StoreMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,7 +37,7 @@ public class RouteService {
     private final ProductLocationRepository productLocationRepository;
     private final MapNodeRepository mapNodeRepository;
     private final MapEdgeRepository mapEdgeRepository;
-    private final PointOfInterestRepository pointOfInterestRepository;
+    private final RouteEndpointResolver routeEndpointResolver;
     private final StopOptimizer stopOptimizer;
     private final RouteComposer routeComposer;
 
@@ -49,7 +47,7 @@ public class RouteService {
             ProductLocationRepository productLocationRepository,
             MapNodeRepository mapNodeRepository,
             MapEdgeRepository mapEdgeRepository,
-            PointOfInterestRepository pointOfInterestRepository,
+            RouteEndpointResolver routeEndpointResolver,
             StopOptimizer stopOptimizer,
             RouteComposer routeComposer
     ) {
@@ -58,7 +56,7 @@ public class RouteService {
         this.productLocationRepository = productLocationRepository;
         this.mapNodeRepository = mapNodeRepository;
         this.mapEdgeRepository = mapEdgeRepository;
-        this.pointOfInterestRepository = pointOfInterestRepository;
+        this.routeEndpointResolver = routeEndpointResolver;
         this.stopOptimizer = stopOptimizer;
         this.routeComposer = routeComposer;
     }
@@ -80,13 +78,13 @@ public class RouteService {
                 availableProducts,
                 graph
         );
-        MapNode startNode = findEndpoint(
+        MapNode startNode = routeEndpointResolver.resolve(
                 mapId,
                 PointOfInterestType.ENTRANCE,
                 MapNodeType.ENTRANCE,
                 graph.nodes()
         );
-        MapNode destinationNode = findEndpoint(
+        MapNode destinationNode = routeEndpointResolver.resolve(
                 mapId,
                 PointOfInterestType.CHECKOUT,
                 MapNodeType.CHECKOUT,
@@ -227,55 +225,6 @@ public class RouteService {
                 .anyMatch(node -> Objects.equals(node.getId(), navigationNode.getId()))) {
             throw new ProductLocationNotFoundException(storeId, product.getId());
         }
-    }
-
-    private MapNode findEndpoint(
-            UUID mapId,
-            PointOfInterestType pointType,
-            MapNodeType nodeType,
-            List<MapNode> activeNodes
-    ) {
-        List<PointOfInterest> points = pointOfInterestRepository
-                .findActiveNavigableByMapIdAndType(mapId, pointType);
-        List<MapNode> pointNodes = points.stream()
-                .filter(PointOfInterest::isActive)
-                .peek(point -> validateMapElement(point.getStoreMap(), mapId, "point of interest"))
-                .map(this::navigationNodeFor)
-                .filter(Objects::nonNull)
-                .filter(MapNode::isActive)
-                .peek(node -> validateMapElement(node.getStoreMap(), mapId, "point of interest navigation node"))
-                .toList();
-
-        if (pointNodes.size() > 1) {
-            throw new RouteConfigurationException(
-                    "More than one active navigable " + pointType.name().toLowerCase() + " is configured"
-            );
-        }
-        if (pointNodes.size() == 1) {
-            return pointNodes.getFirst();
-        }
-
-        List<MapNode> typedNodes = activeNodes.stream()
-                .filter(node -> node.getType() == nodeType)
-                .toList();
-        if (typedNodes.size() > 1) {
-            throw new RouteConfigurationException(
-                    "More than one active " + nodeType.name().toLowerCase() + " node is configured"
-            );
-        }
-        if (typedNodes.isEmpty()) {
-            throw new RoutePointNotFoundException(mapId, pointType.name().toLowerCase());
-        }
-        return typedNodes.getFirst();
-    }
-
-    private MapNode navigationNodeFor(PointOfInterest point) {
-        MapNode navigationNode = point.getNavigationNode();
-        if (navigationNode != null
-                && !Objects.equals(point.getNavigationNodeId(), navigationNode.getId())) {
-            throw new MapConsistencyException("Point of interest navigation node does not match navigation_node_id");
-        }
-        return navigationNode;
     }
 
     private RouteResponse toResponse(

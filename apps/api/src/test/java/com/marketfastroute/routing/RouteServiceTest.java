@@ -79,7 +79,7 @@ class RouteServiceTest {
                 productLocationRepository,
                 mapNodeRepository,
                 mapEdgeRepository,
-                pointOfInterestRepository,
+                new RouteEndpointResolver(pointOfInterestRepository),
                 new StopOptimizer(pathFinder),
                 new RouteComposer(pathFinder)
         );

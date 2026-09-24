@@ -51,7 +51,7 @@ public class MapStructureAdminService {
 
     @Transactional
     public SectorAdminResponse createSector(UUID mapId, CreateSectorRequest request) {
-        StoreMap map = support.findMap(mapId);
+        StoreMap map = support.findDraftMap(mapId);
         ensureSectorCode(mapId, request.code(), null);
         Sector sector = new Sector();
         sector.setStoreMap(map);
@@ -61,6 +61,7 @@ public class MapStructureAdminService {
 
     @Transactional
     public SectorAdminResponse updateSector(UUID mapId, UUID sectorId, UpdateSectorRequest request) {
+        support.findDraftMap(mapId);
         Sector sector = support.findSector(mapId, sectorId, sectorRepository);
         ensureSectorCode(mapId, request.code(), sectorId);
         sector.setName(request.name());
@@ -85,7 +86,7 @@ public class MapStructureAdminService {
 
     @Transactional
     public AisleAdminResponse createAisle(UUID mapId, CreateAisleRequest request) {
-        StoreMap map = support.findMap(mapId);
+        StoreMap map = support.findDraftMap(mapId);
         ensureAisleCode(mapId, request.code(), null);
         Sector sector = request.sectorId() == null ? null : support.findSector(mapId, request.sectorId(), sectorRepository);
 
@@ -98,6 +99,7 @@ public class MapStructureAdminService {
 
     @Transactional
     public AisleAdminResponse updateAisle(UUID mapId, UUID aisleId, UpdateAisleRequest request) {
+        support.findDraftMap(mapId);
         Aisle aisle = support.findAisle(mapId, aisleId, aisleRepository);
         ensureAisleCode(mapId, request.code(), aisleId);
         Sector sector = request.sectorId() == null ? null : support.findSector(mapId, request.sectorId(), sectorRepository);
@@ -125,7 +127,7 @@ public class MapStructureAdminService {
 
     @Transactional
     public ShelfBlockAdminResponse createShelfBlock(UUID mapId, CreateShelfBlockRequest request) {
-        StoreMap map = support.findMap(mapId);
+        StoreMap map = support.findDraftMap(mapId);
         ensureShelfBlockCode(mapId, request.code(), null);
         Hierarchy hierarchy = resolveHierarchy(mapId, request.sectorId(), request.aisleId());
 
@@ -143,6 +145,7 @@ public class MapStructureAdminService {
             UUID shelfBlockId,
             UpdateShelfBlockRequest request
     ) {
+        support.findDraftMap(mapId);
         ShelfBlock shelfBlock = support.findShelfBlock(mapId, shelfBlockId, shelfBlockRepository);
         ensureShelfBlockCode(mapId, request.code(), shelfBlockId);
         Hierarchy hierarchy = resolveHierarchy(mapId, request.sectorId(), request.aisleId());

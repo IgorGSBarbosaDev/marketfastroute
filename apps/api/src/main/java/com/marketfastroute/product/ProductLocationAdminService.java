@@ -8,6 +8,7 @@ import com.marketfastroute.admin.dto.ProductLocationAdminResponse;
 import com.marketfastroute.admin.dto.UpdateProductLocationRequest;
 import com.marketfastroute.map.Aisle;
 import com.marketfastroute.map.AisleRepository;
+import com.marketfastroute.map.MapAdminSupport;
 import com.marketfastroute.map.MapNode;
 import com.marketfastroute.map.MapNodeRepository;
 import com.marketfastroute.map.Sector;
@@ -22,6 +23,7 @@ import com.marketfastroute.store.Store;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -38,6 +40,7 @@ public class ProductLocationAdminService {
     private final AisleRepository aisleRepository;
     private final ShelfBlockRepository shelfBlockRepository;
     private final MapNodeRepository mapNodeRepository;
+    private final MapAdminSupport mapAdminSupport;
 
     public ProductLocationAdminService(
             StoreRepository storeRepository,
@@ -47,7 +50,8 @@ public class ProductLocationAdminService {
             SectorRepository sectorRepository,
             AisleRepository aisleRepository,
             ShelfBlockRepository shelfBlockRepository,
-            MapNodeRepository mapNodeRepository
+            MapNodeRepository mapNodeRepository,
+            MapAdminSupport mapAdminSupport
     ) {
         this.storeRepository = storeRepository;
         this.storeProductRepository = storeProductRepository;
@@ -57,6 +61,7 @@ public class ProductLocationAdminService {
         this.aisleRepository = aisleRepository;
         this.shelfBlockRepository = shelfBlockRepository;
         this.mapNodeRepository = mapNodeRepository;
+        this.mapAdminSupport = mapAdminSupport;
     }
 
     public List<ProductLocationAdminResponse> findByStore(UUID storeId) {
@@ -95,6 +100,7 @@ public class ProductLocationAdminService {
             UpdateProductLocationRequest request
     ) {
         ProductLocation location = findLocation(storeId, locationId);
+        ensureMapsAreDraft(storeId, location.getMapId(), request.mapId());
         ensurePrimaryLocationIsValid(request.primaryLocation(), request.active());
         ResolvedReferences references = resolveReferences(
                 storeId,
@@ -122,8 +128,13 @@ public class ProductLocationAdminService {
     }
 
     private StoreMap ensureStoreMap(UUID storeId, UUID mapId) {
-        return storeMapRepository.findByStore_IdAndId(storeId, mapId)
+        StoreMap map = storeMapRepository.findByStore_IdAndIdForUpdate(storeId, mapId)
                 .orElseThrow(() -> new AdminResourceNotFoundException("Store map"));
+        return mapAdminSupport.requireDraft(map);
+    }
+
+    private void ensureMapsAreDraft(UUID storeId, UUID... mapIds) {
+        Arrays.stream(mapIds).distinct().sorted().forEach(mapId -> ensureStoreMap(storeId, mapId));
     }
 
     private ResolvedReferences resolveReferences(

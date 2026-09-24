@@ -55,7 +55,7 @@ public class MapGraphAdminService {
 
     @Transactional
     public PointOfInterestAdminResponse createPointOfInterest(UUID mapId, CreatePointOfInterestRequest request) {
-        StoreMap map = support.findMap(mapId);
+        StoreMap map = support.findDraftMap(mapId);
         MapNode node = resolveNode(mapId, request.navigationNodeId());
 
         PointOfInterest pointOfInterest = new PointOfInterest();
@@ -70,6 +70,7 @@ public class MapGraphAdminService {
             UUID pointOfInterestId,
             UpdatePointOfInterestRequest request
     ) {
+        support.findDraftMap(mapId);
         PointOfInterest pointOfInterest = pointOfInterestRepository.findByStoreMap_IdAndId(mapId, pointOfInterestId)
                 .orElseThrow(() -> new AdminResourceNotFoundException("Point of interest"));
         MapNode node = resolveNode(mapId, request.navigationNodeId());
@@ -93,7 +94,7 @@ public class MapGraphAdminService {
 
     @Transactional
     public MapNodeAdminResponse createNode(UUID mapId, CreateMapNodeRequest request) {
-        StoreMap map = support.findMap(mapId);
+        StoreMap map = support.findDraftMap(mapId);
         MapNode node = new MapNode();
         node.setStoreMap(map);
         node.setType(request.type());
@@ -106,6 +107,7 @@ public class MapGraphAdminService {
 
     @Transactional
     public MapNodeAdminResponse updateNode(UUID mapId, UUID nodeId, UpdateMapNodeRequest request) {
+        support.findDraftMap(mapId);
         MapNode node = resolveNode(mapId, nodeId);
         node.setType(request.type());
         node.setX(request.x());
@@ -127,7 +129,7 @@ public class MapGraphAdminService {
 
     @Transactional
     public MapEdgeAdminResponse createEdge(UUID mapId, CreateMapEdgeRequest request) {
-        StoreMap map = support.findMap(mapId);
+        StoreMap map = support.findDraftMap(mapId);
         MapNode fromNode = resolveNode(mapId, request.fromNodeId());
         MapNode toNode = resolveNode(mapId, request.toNodeId());
         ensureDistinctNodes(fromNode, toNode);
@@ -145,6 +147,7 @@ public class MapGraphAdminService {
 
     @Transactional
     public MapEdgeAdminResponse updateEdge(UUID mapId, UUID edgeId, UpdateMapEdgeRequest request) {
+        support.findDraftMap(mapId);
         MapEdge edge = mapEdgeRepository.findByStoreMap_IdAndId(mapId, edgeId)
                 .orElseThrow(() -> new com.marketfastroute.admin.AdminResourceNotFoundException("Map edge"));
         MapNode fromNode = resolveNode(mapId, request.fromNodeId());

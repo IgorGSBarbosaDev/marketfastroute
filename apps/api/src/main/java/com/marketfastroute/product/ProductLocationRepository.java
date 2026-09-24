@@ -10,6 +10,33 @@ import java.util.UUID;
 
 public interface ProductLocationRepository extends JpaRepository<ProductLocation, UUID> {
 
+    @Query("""
+            select new com.marketfastroute.product.ProductLocationMapValidationRow(
+                location.id,
+                product.id,
+                location.navigationNodeId,
+                location.x,
+                location.y,
+                location.primaryLocation
+            )
+            from ProductLocation location
+            join location.storeProduct storeProduct
+            join storeProduct.product product
+            join location.storeMap storeMap
+            where location.storeId = :storeId
+              and location.mapId = :mapId
+              and storeMap.store.id = :storeId
+              and storeProduct.store.id = :storeId
+              and location.active = true
+              and storeProduct.active = true
+              and product.active = true
+            order by location.id
+            """)
+    List<ProductLocationMapValidationRow> findActiveForMapValidation(
+            @Param("storeId") UUID storeId,
+            @Param("mapId") UUID mapId
+    );
+
     List<ProductLocation> findByStoreIdOrderById(UUID storeId);
 
     Optional<ProductLocation> findByStoreIdAndId(UUID storeId, UUID locationId);

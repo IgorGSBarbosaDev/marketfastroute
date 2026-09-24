@@ -3,6 +3,7 @@ package com.marketfastroute.map;
 import com.marketfastroute.admin.AdminResourceNotFoundException;
 import com.marketfastroute.admin.AdminValidationException;
 import com.marketfastroute.admin.dto.CreateAisleRequest;
+import com.marketfastroute.admin.dto.CreateSectorRequest;
 import com.marketfastroute.admin.dto.CreateShelfBlockRequest;
 import com.marketfastroute.store.StoreMap;
 import com.marketfastroute.store.StoreMapRepository;
@@ -18,6 +19,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,7 +50,7 @@ class MapStructureAdminServiceTest {
         UUID mapId = UUID.randomUUID();
         UUID foreignSectorId = UUID.randomUUID();
         StoreMap map = map(mapId);
-        when(storeMapRepository.findById(mapId)).thenReturn(Optional.of(map));
+        when(storeMapRepository.findByIdForUpdate(mapId)).thenReturn(Optional.of(map));
         when(aisleRepository.existsByStoreMap_IdAndCode(mapId, "A-1")).thenReturn(false);
         when(sectorRepository.findByStoreMap_IdAndId(mapId, foreignSectorId)).thenReturn(Optional.empty());
 
@@ -56,6 +58,18 @@ class MapStructureAdminServiceTest {
                 mapId,
                 new CreateAisleRequest(
                         foreignSectorId, "A-1", "Aisle", BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, true)));
+    }
+
+    @Test
+    void rejectsStructuralChangesToAnActiveMap() {
+        UUID mapId = UUID.randomUUID();
+        StoreMap map = map(mapId, MapStatus.ACTIVE);
+        when(storeMapRepository.findByIdForUpdate(mapId)).thenReturn(Optional.of(map));
+
+        assertThrows(AdminValidationException.class, () -> service.createSector(
+                mapId,
+                new CreateSectorRequest("Sector", "S-1", BigDecimal.ZERO, BigDecimal.ZERO,
                         BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, true)));
     }
 
@@ -74,7 +88,7 @@ class MapStructureAdminServiceTest {
         aisle.setStoreMap(map);
         aisle.setSectorId(otherSectorId);
 
-        when(storeMapRepository.findById(mapId)).thenReturn(Optional.of(map));
+        when(storeMapRepository.findByIdForUpdate(mapId)).thenReturn(Optional.of(map));
         when(shelfBlockRepository.existsByStoreMap_IdAndCode(mapId, "B-1")).thenReturn(false);
         when(sectorRepository.findByStoreMap_IdAndId(mapId, sectorId)).thenReturn(Optional.of(sector));
         when(aisleRepository.findByStoreMap_IdAndId(mapId, aisleId)).thenReturn(Optional.of(aisle));
@@ -87,6 +101,12 @@ class MapStructureAdminServiceTest {
     }
 
     private StoreMap map(UUID id) {
-        return mock(StoreMap.class);
+        return map(id, MapStatus.DRAFT);
+    }
+
+    private StoreMap map(UUID id, MapStatus status) {
+        StoreMap map = mock(StoreMap.class);
+        lenient().when(map.getStatus()).thenReturn(status);
+        return map;
     }
 }

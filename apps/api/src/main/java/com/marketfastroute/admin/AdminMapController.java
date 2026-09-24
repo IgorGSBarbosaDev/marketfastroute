@@ -19,6 +19,8 @@ import com.marketfastroute.admin.dto.UpdatePointOfInterestRequest;
 import com.marketfastroute.admin.dto.UpdateSectorRequest;
 import com.marketfastroute.admin.dto.UpdateShelfBlockRequest;
 import com.marketfastroute.map.MapGraphAdminService;
+import com.marketfastroute.map.MapPublicationValidation;
+import com.marketfastroute.map.MapPublicationValidator;
 import com.marketfastroute.map.MapStructureAdminService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -40,13 +42,21 @@ public class AdminMapController {
 
     private final MapStructureAdminService structureAdminService;
     private final MapGraphAdminService graphAdminService;
+    private final MapPublicationValidator mapPublicationValidator;
 
     public AdminMapController(
             MapStructureAdminService structureAdminService,
-            MapGraphAdminService graphAdminService
+            MapGraphAdminService graphAdminService,
+            MapPublicationValidator mapPublicationValidator
     ) {
         this.structureAdminService = structureAdminService;
         this.graphAdminService = graphAdminService;
+        this.mapPublicationValidator = mapPublicationValidator;
+    }
+
+    @GetMapping("/validation")
+    public MapPublicationValidation validateMap(@PathVariable UUID mapId) {
+        return mapPublicationValidator.validate(mapId);
     }
 
     @GetMapping("/sectors")

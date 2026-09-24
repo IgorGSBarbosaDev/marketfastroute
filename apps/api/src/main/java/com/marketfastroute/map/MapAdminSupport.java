@@ -1,6 +1,7 @@
 package com.marketfastroute.map;
 
 import com.marketfastroute.admin.AdminResourceNotFoundException;
+import com.marketfastroute.admin.AdminValidationException;
 import com.marketfastroute.store.StoreMap;
 import com.marketfastroute.store.StoreMapRepository;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,19 @@ public class MapAdminSupport {
     public StoreMap findMap(UUID mapId) {
         return storeMapRepository.findById(mapId)
                 .orElseThrow(() -> new AdminResourceNotFoundException("Store map"));
+    }
+
+    public StoreMap findDraftMap(UUID mapId) {
+        StoreMap map = storeMapRepository.findByIdForUpdate(mapId)
+                .orElseThrow(() -> new AdminResourceNotFoundException("Store map"));
+        return requireDraft(map);
+    }
+
+    public StoreMap requireDraft(StoreMap map) {
+        if (map.getStatus() != MapStatus.DRAFT) {
+            throw new AdminValidationException("Only draft maps can be edited; create a new draft version");
+        }
+        return map;
     }
 
     public Sector findSector(UUID mapId, UUID sectorId, SectorRepository repository) {

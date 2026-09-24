@@ -4,6 +4,7 @@ import com.marketfastroute.admin.AdminConflictException;
 import com.marketfastroute.admin.AdminResourceNotFoundException;
 import com.marketfastroute.admin.AdminValidationException;
 import com.marketfastroute.map.MapConsistencyException;
+import com.marketfastroute.map.MapPublicationException;
 import com.marketfastroute.map.StoreMapNotFoundException;
 import com.marketfastroute.product.ProductNotFoundException;
 import com.marketfastroute.product.ProductLocationConsistencyException;
@@ -53,6 +54,13 @@ public class ApiExceptionHandler {
 	public ResponseEntity<ApiErrorResponse> handleAdminConflict(AdminConflictException exception) {
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(new ApiErrorResponse("ADMIN_CONFLICT", exception.getMessage(), Map.of()));
+	}
+
+	@ExceptionHandler(MapPublicationException.class)
+	public ResponseEntity<ApiErrorResponse> handleMapPublication(MapPublicationException exception) {
+		return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+				.body(new ApiErrorResponse("MAP_NOT_PUBLISHABLE", exception.getMessage(),
+						Map.of("issues", exception.getIssues())));
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
